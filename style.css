@@ -1,21 +1,40 @@
 :root {
-  --azul-safira: #0a192f;
-  --azul-brilho: #1f6feb;
-  --texto: #e6f1ff;
-  --cinza: #112240;
+  --azul-safira: #0a0f2c;
+  --azul-brilho: #1e90ff;
+  --cinza: #1c1f2e;
+  --texto: #f0f0f0;
 }
 
 body {
-  margin: 0;
-  font-family: 'Poppins', sans-serif;
-  background-color: var(--azul-safira);
+  background: var(--azul-safira);
   color: var(--texto);
+  font-family: "Poppins", sans-serif;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
+  margin: 0;
 }
 
+/* Tela de carregamento */
+#loading-screen {
+  position: fixed;
+  inset: 0;
+  background: var(--azul-safira);
+  color: var(--texto);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.4em;
+  z-index: 100;
+  animation: fadeOut 1s 2s forwards;
+}
+
+@keyframes fadeOut {
+  to { opacity: 0; visibility: hidden; }
+}
+
+/* Estrutura das telas */
 .screen {
   display: none;
   flex-direction: column;
@@ -28,23 +47,31 @@ body {
   text-align: center;
   width: 90%;
   max-width: 400px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s, transform 0.5s;
 }
 
 .screen.active {
   display: flex;
+  opacity: 1;
+  transform: translateY(0);
 }
 
+/* Campos e botões */
 input {
-  padding: 10px;
+  padding: 12px;
   border-radius: 8px;
   border: none;
   outline: none;
   width: 80%;
   text-align: center;
+  font-size: 1em;
 }
 
 button {
-  padding: 10px 20px;
+  padding: 14px;
+  font-size: 1em;
   background-color: var(--azul-brilho);
   color: white;
   border: none;
@@ -57,30 +84,26 @@ button:hover {
   background-color: #388bfd;
 }
 
-#players {
-  width: 100%;
-  background-color: #091a30;
-  padding: 10px;
-  border-radius: 10px;
-  text-align: left;
-  max-height: 200px;
-  overflow-y: auto;
-}
+/* Feedback visual */
+button.correct { background: #2ecc71 !important; }
+button.wrong { background: #e74c3c !important; }
 
-#options button {
-  display: block;
-  margin: 8px 0;
-  width: 100%;
-}
-
+/* Ranking */
 #rankingList {
-  text-align: left;
+  list-style: none;
+  padding: 0;
   width: 100%;
 }
 
 #rankingList li {
-  background: #091a30;
-  margin: 5px 0;
+  background: #222;
+  margin: 6px 0;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: 8px;
+}
+
+#rankingList li:first-child {
+  background: linear-gradient(90deg, #ffd700, #ffea8a);
+  color: #000;
+  font-weight: bold;
 }
