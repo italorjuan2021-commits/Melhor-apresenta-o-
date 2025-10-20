@@ -1,139 +1,91 @@
-const screens = {
-  lobby: document.getElementById('lobby'),
-  room: document.getElementById('room'),
-  quiz: document.getElementById('quiz'),
-  ranking: document.getElementById('ranking')
-};
+const soundCorrect = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_3929fefa3f.mp3');
+const soundWrong = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_6b3d4f8d0e.mp3');
 
-const nicknameInput = document.getElementById('nickname');
-const roomCodeInput = document.getElementById('roomCode');
-const roomName = document.getElementById('roomName');
-const playersDiv = document.getElementById('players');
+const homeScreen = document.getElementById('home');
+const quizScreen = document.getElementById('quiz');
+const rankingScreen = document.getElementById('ranking');
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+const nameInput = document.getElementById('nameInput');
 const questionText = document.getElementById('questionText');
 const optionsDiv = document.getElementById('options');
+const timerText = document.getElementById('timer');
 const rankingList = document.getElementById('rankingList');
-const timeDisplay = document.getElementById('time');
 
 let players = [];
 let currentQuestion = 0;
 let timer;
-let timeLeft = 32;
-let roomCode = '';
-let myName = '';
+let myName = "";
+let timeLeft = 10;
 
 const questions = [
-  {
-    q: "O que é uma narração?",
-    a: ["Um tipo de texto que relata ações e acontecimentos", "Um texto que descreve objetos", "Um diálogo entre personagens", "Uma lista de instruções"],
-    c: 0
-  },
-  {
-    q: "Qual desses é um elemento da narração?",
-    a: ["Personagem", "Rima", "Argumento", "Tese"],
-    c: 0
-  },
-  {
-    q: "Quem é o responsável por contar a história?",
-    a: ["O narrador", "O leitor", "O autor", "O editor"],
-    c: 0
-  },
-  {
-    q: "O tempo na narração indica...",
-    a: ["Quando os fatos ocorrem", "A velocidade da leitura", "O ritmo do texto", "O número de personagens"],
-    c: 0
-  },
-  {
-    q: "O espaço na narração é...",
-    a: ["O lugar onde se passa a história", "O ambiente da redação", "O espaço entre parágrafos", "O contexto linguístico"],
-    c: 0
-  },
-  {
-    q: "A sequência lógica dos fatos é chamada de...",
-    a: ["Enredo", "Descrição", "Argumento", "Ritmo"],
-    c: 0
-  },
-  {
-    q: "Qual é a função principal de um texto narrativo?",
-    a: ["Contar uma história", "Convencer o leitor", "Informar fatos", "Ensinar regras"],
-    c: 0
-  },
-  {
-    q: "Um conto é um exemplo de...",
-    a: ["Texto narrativo", "Texto injuntivo", "Texto dissertativo", "Texto publicitário"],
-    c: 0
-  },
-  {
-    q: "O conflito em uma narrativa é...",
-    a: ["O problema central da história", "O clímax do enredo", "O espaço onde ocorre a ação", "O final da narrativa"],
-    c: 0
-  },
-  {
-    q: "Quando o narrador participa da história, ele é...",
-    a: ["Narrador-personagem", "Narrador-observador", "Narrador-onisciente", "Narrador-terceiro"],
-    c: 0
-  }
+  { q: "O que é narração?", o: ["É a ação de narrar algo", "É descrever uma imagem", "É uma forma de cantar"], c: 0 },
+  { q: "Quem narra uma história?", o: ["Personagem", "Narrador", "Leitor"], c: 1 },
+  { q: "O que é o enredo?", o: ["A sequência de fatos da história", "Os sentimentos dos personagens", "O tempo em que ocorre"], c: 0 },
+  { q: "Qual o foco narrativo em 1ª pessoa?", o: ["O narrador participa da história", "O narrador é observador", "O narrador é neutro"], c: 0 },
+  { q: "Qual é a principal característica do narrador onisciente?", o: ["Sabe tudo sobre os personagens", "Fala como personagem", "Não tem opinião"], c: 0 },
 ];
 
-// Troca de telas
-function show(screen) {
-  Object.values(screens).forEach(s => s.classList.remove('active'));
-  screen.classList.add('active');
-}
-
-// Criar sala
-document.getElementById('createRoom').onclick = () => {
-  myName = nicknameInput.value.trim();
-  if (!myName) return alert("Digite seu nome!");
-  roomCode = Math.floor(Math.random() * 90000 + 10000).toString();
-  roomName.textContent = roomCode;
-  players = [{ name: myName, score: 0 }];
-  updatePlayers();
-  show(screens.room);
-};
-
-// Entrar em sala
-document.getElementById('joinRoom').onclick = () => {
-  myName = nicknameInput.value.trim();
-  const code = roomCodeInput.value.trim();
-  if (!myName || !code) return alert("Digite nome e código!");
-  roomCode = code;
-  players.push({ name: myName, score: 0 });
-  roomName.textContent = roomCode;
-  updatePlayers();
-  show(screens.room);
-};
-
-function updatePlayers() {
-  playersDiv.innerHTML = players.map(p => `👤 ${p.name}`).join('<br>');
-}
-
-// Começar jogo
-document.getElementById('startGame').onclick = () => {
-  show(screens.quiz);
-  currentQuestion = 0;
+startBtn.onclick = () => {
+  const name = nameInput.value.trim();
+  if (!name) return alert("Digite seu nome!");
+  myName = name;
+  players.push({ name, score: 0 });
+  showScreen(quizScreen);
   startQuestion();
 };
 
-// Perguntas
+restartBtn.onclick = () => {
+  currentQuestion = 0;
+  players.forEach(p => p.score = 0);
+  showScreen(homeScreen);
+};
+
+function showScreen(screen) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  screen.classList.add('active');
+}
+
 function startQuestion() {
+  if (currentQuestion >= questions.length) return showRanking();
   const q = questions[currentQuestion];
+  document.getElementById('progress').textContent = `Pergunta ${currentQuestion + 1} de ${questions.length}`;
   questionText.textContent = q.q;
-  optionsDiv.innerHTML = '';
-  q.a.forEach((option, i) => {
-    const btn = document.createElement('button');
-    btn.textContent = option;
+  optionsDiv.innerHTML = "";
+  q.o.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = opt;
     btn.onclick = () => checkAnswer(i);
     optionsDiv.appendChild(btn);
   });
   startTimer();
 }
 
+function checkAnswer(i) {
+  const correct = questions[currentQuestion].c;
+  const btns = optionsDiv.querySelectorAll('button');
+  btns.forEach((b, idx) => {
+    if (idx === correct) b.classList.add('correct');
+    else if (idx === i) b.classList.add('wrong');
+    b.disabled = true;
+  });
+  if (i === correct) {
+    soundCorrect.play();
+    const player = players.find(p => p.name === myName);
+    player.score += 10;
+  } else {
+    soundWrong.play();
+  }
+  clearInterval(timer);
+  setTimeout(nextQuestion, 1500);
+}
+
 function startTimer() {
-  timeLeft = 32;
-  timeDisplay.textContent = timeLeft;
+  timeLeft = 10;
+  timerText.textContent = `⏱️ ${timeLeft}s`;
   timer = setInterval(() => {
     timeLeft--;
-    timeDisplay.textContent = timeLeft;
+    timerText.textContent = `⏱️ ${timeLeft}s`;
     if (timeLeft <= 0) {
       clearInterval(timer);
       nextQuestion();
@@ -141,34 +93,18 @@ function startTimer() {
   }, 1000);
 }
 
-function checkAnswer(i) {
-  const correct = questions[currentQuestion].c;
-  if (i === correct) {
-    const player = players.find(p => p.name === myName);
-    player.score += 10;
-  }
-  clearInterval(timer);
-  nextQuestion();
-}
-
 function nextQuestion() {
   currentQuestion++;
-  if (currentQuestion < questions.length) {
-    startQuestion();
-  } else {
-    showRanking();
-  }
+  startQuestion();
 }
 
-// Ranking
 function showRanking() {
-  show(screens.ranking);
-  const sorted = players.sort((a, b) => b.score - a.score);
-  rankingList.innerHTML = sorted.map((p, i) => `
-    <li>${i + 1}º ${p.name} — ${p.score} pts</li>
-  `).join('');
+  showScreen(rankingScreen);
+  rankingList.innerHTML = "";
+  players.sort((a, b) => b.score - a.score);
+  players.forEach(p => {
+    const li = document.createElement("li");
+    li.textContent = `${p.name} — ${p.score} pts`;
+    rankingList.appendChild(li);
+  });
 }
-
-document.getElementById('backToLobby').onclick = () => {
-  show(screens.lobby);
-};
