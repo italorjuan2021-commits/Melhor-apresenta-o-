@@ -1,46 +1,37 @@
 
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quiz de Narração</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Melhor Apresentação 🎮</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app">
-    <!-- Tela do Lobby -->
-    <div id="lobby" class="screen active">
-      <h1>🎮 Quiz de Narração</h1>
-      <p>Entre com seu nome e o código da sala</p>
-      <input type="text" id="nickname" placeholder="Seu nome..." />
-      <input type="text" id="roomCode" placeholder="Código da sala..." />
-      <div class="buttons">
-        <button id="createRoom">Criar Sala</button>
-        <button id="joinRoom">Entrar na Sala</button>
-      </div>
-    </div>
+  <div id="loading-screen">
+    <h2>Carregando...</h2>
+  </div>
 
-    <!-- Tela da Sala -->
-    <div id="room" class="screen">
-      <h2>Sala <span id="roomName"></span></h2>
-      <div id="players"></div>
-      <button id="startGame" class="start">Começar Jogo</button>
+  <div id="app">
+    <!-- Tela Inicial -->
+    <div id="home" class="screen active">
+      <h1>Melhor Apresentação 🎤</h1>
+      <input type="text" id="nameInput" placeholder="Digite seu nome">
+      <button id="startBtn">Entrar no jogo</button>
     </div>
 
     <!-- Tela do Quiz -->
     <div id="quiz" class="screen">
-      <div id="questionBox">
-        <h2 id="questionText"></h2>
-        <div id="options"></div>
-        <p id="timer">Tempo: <span id="time">32</span>s</p>
-      </div>
+      <p id="progress"></p>
+      <h2 id="questionText"></h2>
+      <div id="options"></div>
+      <p id="timer"></p>
     </div>
 
-    <!-- Tela do Ranking -->
+    <!-- Tela de Ranking -->
     <div id="ranking" class="screen">
-      <h2>🏆 Placar Final</h2>
-      <ol id="rankingList"></ol>
-      <button id="backToLobby">Voltar ao Lobby</button>
+      <h2>🏆 Ranking Final</h2>
+      <ul id="rankingList"></ul>
+      <button id="restartBtn">Jogar novamente</button>
     </div>
   </div>
 
