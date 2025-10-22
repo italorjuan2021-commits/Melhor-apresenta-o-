@@ -1,1 +1,68 @@
+:root{
+  --bg-1: #071227;
+  --card: #0e2340;
+  --accent: #0F52BA;
+  --accent-2: #1e90ff;
+  --muted: #a9b9d6;
+  --good: #4CAF50;
+  --bad: #E91E63;
+  --glass: rgba(255,255,255,0.03);
+}
 
+*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),#021025);color:#eaf3ff}
+#loading-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg-1);z-index:1000;transition:opacity .6s}
+#loading-screen .loader{font-size:1.2rem;color:var(--accent-2)}
+#app{max-width:1000px;margin:20px auto;padding:12px}
+
+/* Screen */
+.screen{display:none;align-items:center;justify-content:center}
+.screen.active{display:flex}
+.card{background:linear-gradient(180deg,var(--card), rgba(12,24,44,0.9));padding:18px;border-radius:14px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 30px rgba(0,0,0,0.45);width:100%}
+
+/* LOBBY */
+.card h1{margin:6px 0 12px;font-size:1.6rem}
+.row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+input{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.05);background:transparent;color:#eaf3ff;flex:1;min-width:120px}
+.btn{padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600}
+.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white}
+.btn.outline{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+.muted{color:var(--muted);font-size:0.95rem}
+.hint{font-size:0.9rem;color:var(--muted);margin-top:8px}
+
+/* ROOM */
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.room-body{display:flex;gap:12px}
+.players{flex:1;max-height:320px;overflow:auto}
+.players ul{list-style:none;padding:0;margin:0}
+.players li{padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+
+/* GAME */
+.game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.question-card{padding:18px}
+.question{font-weight:700;font-size:1.15rem;margin-bottom:12px}
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.options-grid button{padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);background:rgba(255,255,255,0.02);cursor:pointer;font-weight:600}
+.options-grid button.correct{background:var(--good);color:#06210a}
+.options-grid button.wrong{background:var(--bad);color:#3a061a}
+#roundStatus{margin-top:12px;color:var(--muted)}
+
+/* RESULTS / PODIUM */
+.podium{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.podium .place{padding:10px;border-radius:10px;background:rgba(255,255,255,0.02);min-width:120px;text-align:center}
+.podium .place.first{transform:scale(1.06);background:linear-gradient(90deg,#ffd700,#ffea8a);color:#000}
+#finalRanking{margin-top:8px;color:var(--muted)}
+
+/* responsive */
+@media(max-width:760px){
+  .room-body{flex-direction:column}
+  .options-grid{grid-template-columns:1fr}
+  .card{padding:12px}
+}
+
+/* transitions for screens */
+.screen{opacity:0;transform:translateY(12px);transition:opacity .35s,transform .35s}
+.screen.active{opacity:1;transform:none}
+
+/* small helpers */
+.center{display:flex;align-items:center;justify-content:center}
