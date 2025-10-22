@@ -1,4 +1,4 @@
-// server.js
+// server.js - Quiz Narração Multiplayer (Node.js + Socket.io)
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -6,11 +6,7 @@ const { customAlphabet } = require('nanoid');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' },
-  pingInterval: 10000,
-  pingTimeout: 5000
-});
+const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static('public'));
 
@@ -22,7 +18,7 @@ const POINTS_PER_QUESTION = 10;
 const PRE_START_SECONDS = 15;
 const QUESTION_SECONDS = 32;
 
-// --- QUESTIONS: 10 short questions about narração (as you requested)
+// Questions pool (10 short questions about "narração")
 const QUESTIONS_POOL = [
   { q: "O que é narração?", opts: ["Descrever objetos", "Contar uma história", "Argumentar um ponto", "Explicar um experimento"], a: 1 },
   { q: "Quem é o narrador?", opts: ["Quem lê o texto", "Quem conta a história", "Quem publica o texto", "Um personagem secundário"], a: 1 },
@@ -36,7 +32,6 @@ const QUESTIONS_POOL = [
   { q: "O desfecho é:", opts: ["O início da história", "A resolução das ações", "O sumário", "A ficha técnica"], a: 1 }
 ];
 
-// Helper: shuffle copy and take QUESTIONS_COUNT
 function makeQuestions() {
   const pool = [...QUESTIONS_POOL];
   for (let i = pool.length - 1; i > 0; i--) {
@@ -46,22 +41,7 @@ function makeQuestions() {
   return pool.slice(0, QUESTIONS_COUNT);
 }
 
-// Room state: stored in-memory (ok for classroom). For production, use DB/Redis.
 const rooms = new Map();
-
-/*
-room structure:
-{
-  code,
-  hostId,
-  players: [{ id, name, score, correctCount }],
-  questions: [{q, opts, a},...],
-  currentIndex,
-  status: 'waiting'|'starting'|'in-progress'|'finished',
-  timers: { startTimer, questionTimer },
-  _answers: { socketId: choiceIndex }
-}
-*/
 
 function createRoom(hostSocketId, hostName) {
   const code = nanoid();
@@ -80,9 +60,7 @@ function createRoom(hostSocketId, hostName) {
   return room;
 }
 
-function getRoom(code) {
-  return rooms.get(code);
-}
+function getRoom(code) { return rooms.get(code); }
 
 function addPlayerToRoom(room, socketId, name) {
   if (!room) return false;
@@ -95,9 +73,11 @@ function removePlayerFromRoom(room, socketId) {
   if (!room) return;
   room.players = room.players.filter(p => p.id !== socketId);
   if (room.hostId === socketId) {
-    // transfer host or close room
     if (room.players.length > 0) room.hostId = room.players[0].id;
-    else rooms.delete(room.code);
+    else {
+      clearRoomTimers(room);
+      rooms.delete(room.code);
+    }
   }
 }
 
@@ -115,12 +95,10 @@ function broadcastRoomUpdate(room) {
   io.to(room.code).emit('room_update', roomSummary(room));
 }
 
-// Evaluate answers for current question
 function evaluateRound(room) {
   const idx = room.currentIndex;
   const q = room.questions[idx];
   const correctIdx = q.a;
-  // update each player's score
   room.players.forEach(p => {
     const ans = room._answers[p.id];
     if (ans !== undefined && ans === correctIdx) {
@@ -128,15 +106,10 @@ function evaluateRound(room) {
       p.correctCount = (p.correctCount || 0) + 1;
     }
   });
-  // prepare results payload
   const results = room.players.map(p => ({
-    id: p.id,
-    name: p.name,
-    score: p.score,
-    correctCount: p.correctCount || 0,
-    answered: room._answers[p.id] !== undefined,
-    givenAnswer: room._answers[p.id] !== undefined ? room._answers[p.id] : null
-  })).sort((a,b) => b.score - a.score);
+    id: p.id, name: p.name, score: p.score, correctCount: p.correctCount || 0,
+    answered: room._answers[p.id] !== undefined, givenAnswer: room._answers[p.id] !== undefined ? room._answers[p.id] : null
+  })).sort((a,b)=> b.score - a.score);
 
   io.to(room.code).emit('round_result', {
     questionIndex: idx,
@@ -144,11 +117,9 @@ function evaluateRound(room) {
     players: results
   });
 
-  // clear answers for next round
   room._answers = {};
 }
 
-// send question to room (and set timer)
 function sendQuestion(room) {
   if (!room) return;
   if (room.currentIndex < 0 || room.currentIndex >= room.questions.length) {
@@ -156,7 +127,7 @@ function sendQuestion(room) {
     return;
   }
   const q = room.questions[room.currentIndex];
-  room._answers = {}; // reset answers
+  room._answers = {};
   io.to(room.code).emit('question', {
     index: room.currentIndex,
     q: q.q,
@@ -164,10 +135,8 @@ function sendQuestion(room) {
     time: QUESTION_SECONDS
   });
 
-  // question timer
   room.timers.questionTimer = setTimeout(() => {
     evaluateRound(room);
-    // small pause then next or finish
     clearTimeout(room.timers.questionTimer);
     room.currentIndex++;
     if (room.currentIndex >= room.questions.length) {
@@ -178,7 +147,6 @@ function sendQuestion(room) {
   }, QUESTION_SECONDS * 1000);
 }
 
-// start the room after PRE_START_SECONDS countdown
 function startRoomCountdown(room) {
   room.status = 'starting';
   let sec = PRE_START_SECONDS;
@@ -197,7 +165,6 @@ function startRoomCountdown(room) {
 
 function finishRoom(room) {
   room.status = 'finished';
-  // build final ranking
   const ranking = room.players.map(p => ({
     name: p.name,
     score: p.score,
@@ -209,12 +176,8 @@ function finishRoom(room) {
     ranking,
     top5: ranking.slice(0, 5)
   });
-
-  // optionally keep room in memory for a while or delete
-  // rooms.delete(room.code);
 }
 
-// clean up timers when needed (on room close)
 function clearRoomTimers(room) {
   if (!room) return;
   if (room.timers.startTimer) clearInterval(room.timers.startTimer);
@@ -222,11 +185,9 @@ function clearRoomTimers(room) {
   room.timers = {};
 }
 
-// --- Socket.io handlers
 io.on('connection', socket => {
   console.log('conn:', socket.id);
 
-  // create room
   socket.on('create_room', (name, cb) => {
     try {
       const room = createRoom(socket.id, name);
@@ -239,7 +200,6 @@ io.on('connection', socket => {
     }
   });
 
-  // join room
   socket.on('join_room', (data, cb) => {
     const { code, name } = data;
     const room = getRoom(code);
@@ -252,7 +212,6 @@ io.on('connection', socket => {
     broadcastRoomUpdate(room);
   });
 
-  // leave room explicitly
   socket.on('leave_room', (code) => {
     const room = getRoom(code);
     if (!room) return;
@@ -261,7 +220,6 @@ io.on('connection', socket => {
     broadcastRoomUpdate(room);
   });
 
-  // start room (only host)
   socket.on('start_room', (code, cb) => {
     const room = getRoom(code);
     if (!room) return cb && cb({ ok: false, msg: 'Sala inválida' });
@@ -271,19 +229,15 @@ io.on('connection', socket => {
     cb && cb({ ok: true });
   });
 
-  // submit answer
   socket.on('submit_answer', (data) => {
     const { code, answerIndex } = data;
     const room = getRoom(code);
     if (!room || room.status !== 'in-progress') return;
-    // record first answer only
     if (room._answers[socket.id] !== undefined) return;
     room._answers[socket.id] = answerIndex;
 
-    // if all players answered early: evaluate immediately
     const answeredCount = Object.keys(room._answers).length;
     if (answeredCount === room.players.length) {
-      // clear timer and evaluate
       if (room.timers.questionTimer) {
         clearTimeout(room.timers.questionTimer);
         evaluateRound(room);
@@ -298,17 +252,14 @@ io.on('connection', socket => {
   });
 
   socket.on('disconnect', () => {
-    // remove socket from any room
     for (let room of rooms.values()) {
       const idx = room.players.findIndex(p => p.id === socket.id);
       if (idx !== -1) {
         room.players.splice(idx, 1);
         io.to(room.code).emit('room_update', roomSummary(room));
-        // host left?
         if (room.hostId === socket.id) {
           if (room.players.length > 0) room.hostId = room.players[0].id;
           else {
-            // delete room
             clearRoomTimers(room);
             rooms.delete(room.code);
           }
@@ -319,6 +270,5 @@ io.on('connection', socket => {
   });
 });
 
-// Start HTTP server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log('Server running on', PORT));
