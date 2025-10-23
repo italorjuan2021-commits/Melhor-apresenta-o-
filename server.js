@@ -1,4 +1,4 @@
-// server.js - Quiz Narração Multiplayer (Node.js + Socket.io)
+// server.js - Quiz Narração Multiplayer (Node.js + Socket.io) - atualizado
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -15,8 +15,8 @@ const nanoid = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 6);
 const MAX_PLAYERS_PER_ROOM = 50;
 const QUESTIONS_COUNT = 10;
 const POINTS_PER_QUESTION = 10;
-const PRE_START_SECONDS = 15;
-const QUESTION_SECONDS = 32;
+const PRE_START_SECONDS = 5;   // <--- reduzido para 5s
+const QUESTION_SECONDS = 15;   // <--- reduzido para 15s
 
 // Questions pool (10 short questions about "narração")
 const QUESTIONS_POOL = [
@@ -31,6 +31,24 @@ const QUESTIONS_POOL = [
   { q: "O que compõe uma narrativa?", opts: ["Personagens, enredo, tempo e espaço", "Somente personagens", "Somente enredo", "Somente tempo"], a: 0 },
   { q: "O desfecho é:", opts: ["O início da história", "A resolução das ações", "O sumário", "A ficha técnica"], a: 1 }
 ];
+
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// shuffle options and return {opts: [...], correctIndex: n}
+function shuffleOptionsWithAnswer(opts, correctIdx) {
+  const indexed = opts.map((o, i) => ({ o, i }));
+  const shuffled = shuffleArray(indexed);
+  const newOpts = shuffled.map(s => s.o);
+  const newCorrectIndex = shuffled.findIndex(s => s.i === correctIdx);
+  return { opts: newOpts, correctIndex: newCorrectIndex };
+}
 
 function makeQuestions() {
   const pool = [...QUESTIONS_POOL];
@@ -53,7 +71,8 @@ function createRoom(hostSocketId, hostName) {
     currentIndex: -1,
     status: 'waiting',
     timers: {},
-    _answers: {}
+    _answers: {},              // answers for current question
+    acceptingAnswers: false    // flag to block answers after timeout
   };
   rooms.set(code, room);
   addPlayerToRoom(room, hostSocketId, hostName);
@@ -98,7 +117,8 @@ function broadcastRoomUpdate(room) {
 function evaluateRound(room) {
   const idx = room.currentIndex;
   const q = room.questions[idx];
-  const correctIdx = q.a;
+  if (!q) return;
+  const correctIdx = q.a_shuffled; // we'll set this when sending
   room.players.forEach(p => {
     const ans = room._answers[p.id];
     if (ans !== undefined && ans === correctIdx) {
@@ -126,16 +146,25 @@ function sendQuestion(room) {
     finishRoom(room);
     return;
   }
-  const q = room.questions[room.currentIndex];
+  const qRaw = room.questions[room.currentIndex];
+  // shuffle options and store the mapping in question object
+  const { opts: shuffledOpts, correctIndex } = shuffleOptionsWithAnswer(qRaw.opts, qRaw.a);
+  // store the shuffled-correct index to evaluate later
+  room.questions[room.currentIndex].a_shuffled = correctIndex;
+
   room._answers = {};
+  room.acceptingAnswers = true;
+
   io.to(room.code).emit('question', {
     index: room.currentIndex,
-    q: q.q,
-    options: q.opts,
+    q: qRaw.q,
+    options: shuffledOpts,
     time: QUESTION_SECONDS
   });
 
+  // set timer for question
   room.timers.questionTimer = setTimeout(() => {
+    room.acceptingAnswers = false;
     evaluateRound(room);
     clearTimeout(room.timers.questionTimer);
     room.currentIndex++;
@@ -233,22 +262,12 @@ io.on('connection', socket => {
     const { code, answerIndex } = data;
     const room = getRoom(code);
     if (!room || room.status !== 'in-progress') return;
+    // block answers if not accepting
+    if (!room.acceptingAnswers) return;
     if (room._answers[socket.id] !== undefined) return;
     room._answers[socket.id] = answerIndex;
-
-    const answeredCount = Object.keys(room._answers).length;
-    if (answeredCount === room.players.length) {
-      if (room.timers.questionTimer) {
-        clearTimeout(room.timers.questionTimer);
-        evaluateRound(room);
-        room.currentIndex++;
-        if (room.currentIndex >= room.questions.length) {
-          setTimeout(() => finishRoom(room), 2000);
-        } else {
-          setTimeout(() => sendQuestion(room), 2000);
-        }
-      }
-    }
+    // NOTE: we purposely DO NOT evaluate early when everyone answered —
+    // the reveal only happens when the server timer expires, per the spec.
   });
 
   socket.on('disconnect', () => {
