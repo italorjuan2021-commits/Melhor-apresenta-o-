@@ -1,79 +1,51 @@
-
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Quiz Narração — Multiplayer</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A NARRAÇÃO</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="loading-screen"><div class="loader">Carregando...</div></div>
+  <div class="container">
+    <header>
+      <h1 class="game-title">A NARRAÇÃO</h1>
+      <p class="credits">Estudantes: Italo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
+    </header>
 
-  <div id="app">
-    <!-- LOBBY -->
-    <section id="lobby-screen" class="screen active">
-      <div class="card">
-        <h1>Quiz de Narração</h1>
-        <input id="nick" placeholder="Seu nome (ex: João)" maxlength="18" />
-        <div class="row">
-          <button id="createRoomBtn" class="btn primary">Criar sala</button>
-          <input id="joinCode" placeholder="Código da sala" maxlength="6" />
-          <button id="joinRoomBtn" class="btn outline">Entrar</button>
-        </div>
-        <p class="muted">Salas suportam até 50 jogadores. Compartilhe o código.</p>
-        <div class="hint">Dica: crie a sala no seu PC e peça aos colegas para entrarem pelo celular.</div>
+    <section id="lobby">
+      <h2>Bem-vindo!</h2>
+      <p>Crie ou entre em uma sala para começar.</p>
+      <input type="text" id="nickname" placeholder="Seu nome" />
+      <div class="lobby-buttons">
+        <button id="createRoomBtn">Criar Sala</button>
+        <button id="joinRoomBtn">Entrar em Sala</button>
+      </div>
+      <input type="text" id="roomCode" placeholder="Código da sala" />
+    </section>
+
+    <section id="waiting-room" class="hidden">
+      <h2>Esperando jogadores...</h2>
+      <p id="roomInfo"></p>
+      <ul id="playerList"></ul>
+      <p id="countdown"></p>
+    </section>
+
+    <section id="game" class="hidden">
+      <div id="question-box">
+        <h2 id="question-text"></h2>
+        <div id="options"></div>
+        <p id="timer"></p>
       </div>
     </section>
 
-    <!-- ROOM -->
-    <section id="room-screen" class="screen">
-      <div class="top">
-        <div> Sala: <strong id="roomCodeDisplay">—</strong></div>
-        <div id="hostBadge" class="muted">Host</div>
-      </div>
-      <div class="room-body">
-        <div class="players card">
-          <h3>Jogadores</h3>
-          <ul id="playersList"></ul>
-        </div>
-        <div class="controls card">
-          <h3>Ações</h3>
-          <div id="roomInfo">Status: <span id="roomStatus">Aguardando</span></div>
-          <button id="startBtn" class="btn primary">Iniciar jogo</button>
-          <button id="leaveBtn" class="btn outline">Sair</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- GAME -->
-    <section id="game-screen" class="screen">
-      <div class="game-header card">
-        <div id="progressBar">Pergunta <span id="qNum">0</span> de <span id="qTotal">10</span></div>
-        <div id="countdownTimer">00</div>
-      </div>
-
-      <div class="card question-card">
-        <div id="questionText" class="question"></div>
-        <div id="optionsGrid" class="options-grid"></div>
-      </div>
-
-      <div id="roundStatus" class="card muted">Aguardando respostas...</div>
-    </section>
-
-    <!-- RESULTS -->
-    <section id="results-screen" class="screen">
-      <div class="card">
-        <h2>Pódio — Top 5</h2>
-        <div id="podium" class="podium"></div>
-        <h3>Classificação completa</h3>
-        <ol id="finalRanking"></ol>
-        <button id="playAgain" class="btn primary">Jogar novamente</button>
-        <button id="backToLobby" class="btn outline">Voltar ao lobby</button>
-      </div>
+    <section id="results" class="hidden">
+      <h2>Resultados</h2>
+      <ol id="ranking"></ol>
+      <button id="restartBtn">Jogar Novamente</button>
     </section>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
