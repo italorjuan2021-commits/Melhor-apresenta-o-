@@ -1,7 +1,7 @@
-// app.js (client)
-const socket = io(); // connects to same origin; on Railway this will work automatically
+  // app.js - client logic (connects to server via socket.io)
+// Note: when deployed to same origin via Render, io() connects automatically.
+const socket = io();
 
-// UI refs
 const lobbyScreen = document.getElementById('lobby-screen');
 const roomScreen = document.getElementById('room-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -35,15 +35,8 @@ let myName = '';
 let myRoom = '';
 let amIHost = false;
 let totalQuestions = 10;
-
-// sound fx
-const sCorrect = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_3929fefa3f.mp3');
-const sWrong = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_6b3d4f8d0e.mp3');
-
-function showScreen(el) {
-  [lobbyScreen, roomScreen, gameScreen, resultsScreen].forEach(s => s.classList.remove('active'));
-  el.classList.add('active');
-}
+let localQuestionTimerInterval = null;
+let allowedToAnswer = false;
 
 // small loading hide
 window.addEventListener('load', () => {
@@ -52,6 +45,11 @@ window.addEventListener('load', () => {
     setTimeout(()=> loadingScreen.style.display = 'none', 600);
   }, 600);
 });
+
+function showScreen(el) {
+  [lobbyScreen, roomScreen, gameScreen, resultsScreen].forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+}
 
 // create room
 createRoomBtn.addEventListener('click', () => {
@@ -116,7 +114,6 @@ socket.on('room_update', (room) => {
   if (!myRoom || room.code !== myRoom) return;
   renderPlayers(room.players || []);
   roomStatus.innerText = room.status || 'Aguardando';
-  // host badge
   document.getElementById('hostBadge').style.display = (room.hostId === socket.id) ? 'block' : 'none';
 });
 
@@ -124,55 +121,66 @@ socket.on('countdown_start', (data) => {
   roomStatus.innerText = `Começando em ${data.seconds}s`;
   showScreen(roomScreen);
 });
-
 socket.on('countdown_tick', (data) => {
   roomStatus.innerText = `Começando em ${data.seconds}s`;
   if (data.seconds <= 0) roomStatus.innerText = 'Iniciando...';
 });
 
+// QUESTION: server sends question only when timer started
 socket.on('question', (payload) => {
   showScreen(gameScreen);
   qNum.innerText = payload.index + 1;
   qTotal.innerText = totalQuestions;
-  countdownTimer.innerText = payload.time;
   questionText.innerText = payload.q;
   optionsGrid.innerHTML = '';
   roundStatus.innerText = 'Responda agora!';
+  allowedToAnswer = true;
+
   payload.options.forEach((opt, idx) => {
     const b = document.createElement('button');
     b.innerText = String.fromCharCode(65+idx) + '. ' + opt;
+    b.dataset.idx = idx;
     b.addEventListener('click', () => {
+      if (!allowedToAnswer) return;
       submitAnswer(idx, b);
     });
     optionsGrid.appendChild(b);
   });
-  // animate timer countdown locally
+
+  // countdown on client for display (server is authoritative)
+  countdownTimer.innerText = payload.time;
+  if (localQuestionTimerInterval) clearInterval(localQuestionTimerInterval);
   let t = payload.time;
-  const intv = setInterval(()=> {
+  localQuestionTimerInterval = setInterval(()=> {
     t--;
     countdownTimer.innerText = t;
-    if (t <= 0) clearInterval(intv);
+    if (t <= 0) {
+      clearInterval(localQuestionTimerInterval);
+      allowedToAnswer = false;
+      // disable buttons visually when time's up
+      Array.from(optionsGrid.children).forEach(btn => btn.disabled = true);
+      roundStatus.innerText = 'Tempo esgotado — aguardando resultado...';
+    }
   }, 1000);
 });
 
+// round result: server sends correct index (shuffled) after timer expires
 socket.on('round_result', (data) => {
-  // show correct/wrong and partial ranking
   const correct = data.correctIndex;
-  const players = data.players; // sorted by score desc
-  // Mark buttons
+  const players = data.players;
+  // visually mark options
   Array.from(optionsGrid.children).forEach((btn, idx) => {
     btn.disabled = true;
+    btn.classList.remove('selected','correct','wrong');
     if (idx === correct) btn.classList.add('correct');
     else if (btn.classList.contains('selected')) btn.classList.add('wrong');
   });
-
-  // partial scoreboard
   roundStatus.innerText = 'Placar parcial: ' + players.slice(0,5).map(p => `${p.name} (${p.score})`).join('  •  ');
 });
 
+// final results
 socket.on('final_results', (data) => {
   showScreen(resultsScreen);
-  // podium
   podium.innerHTML = '';
   data.top5.forEach((p, idx) => {
     const div = document.createElement('div');
@@ -181,7 +189,6 @@ socket.on('final_results', (data) => {
     div.innerHTML = `<strong>#${idx+1}</strong><div>${p.name}</div><div>${p.score} pts</div><div>${p.accuracy}% acerto</div>`;
     podium.appendChild(div);
   });
-  // full ranking
   finalRanking.innerHTML = '';
   data.ranking.forEach(p => {
     const li = document.createElement('li');
@@ -190,7 +197,7 @@ socket.on('final_results', (data) => {
   });
 });
 
-// helper functions
+// render players list
 function renderPlayers(players) {
   playersList.innerHTML = '';
   players.forEach(p => {
@@ -200,13 +207,15 @@ function renderPlayers(players) {
   });
 }
 
+// submit an answer
 function submitAnswer(index, btn) {
-  // Visual select
+  // mark selected locally
   Array.from(optionsGrid.children).forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
+  // send to server
   socket.emit('submit_answer', { code: myRoom, answerIndex: index });
-  // play sound optimistic (will reflect correctness on 'round_result')
-  // no immediate scoring on client
+  // visually disable immediate multiple clicks, still wait for round_result
+  Array.from(optionsGrid.children).forEach(b => b.disabled = true);
 }
 
 // reset client state
@@ -218,15 +227,13 @@ function resetClientState() {
   roomCodeDisplay.innerText = '—';
   roomStatus.innerText = 'Aguardando';
   showScreen(lobbyScreen);
+  if (localQuestionTimerInterval) clearInterval(localQuestionTimerInterval);
 }
 
-// play again / back
 playAgainBtn && playAgainBtn.addEventListener('click', () => {
-  // go back to lobby (room still exists server-side)
   resetClientState();
   showScreen(lobbyScreen);
 });
-
 backToLobbyBtn && backToLobbyBtn.addEventListener('click', () => {
   resetClientState();
   showScreen(lobbyScreen);
