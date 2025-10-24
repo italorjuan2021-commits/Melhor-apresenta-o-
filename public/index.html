@@ -2,58 +2,280 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>A NARRAÇÃO - Quiz Interativo</title>
+  <title>A NARRAÇÃO - Jogo Interativo</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* 🔥 Fundo animado premium */
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(270deg, #001f3f, #004080, #0077cc, #001f3f);
+      background-size: 800% 800%;
+      animation: gradientShift 18s ease infinite;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* Container geral */
+    #app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px;
+      text-align: center;
+    }
+
+    /* Título principal */
+    .main-header {
+      margin-top: 30px;
+      margin-bottom: 30px;
+    }
+
+    .game-title {
+      font-size: 3rem;
+      background: linear-gradient(90deg, #00c6ff, #0072ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(0, 162, 255, 0.3);
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+
+    .credits {
+      font-size: 1rem;
+      color: #c9dbff;
+      margin-top: 6px;
+      opacity: 0.85;
+    }
+
+    /* Card com efeito vidro */
+    .card {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 25px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      transition: all 0.4s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Botões */
+    .btn {
+      padding: 12px 22px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .btn.primary {
+      background: linear-gradient(90deg, #007bff, #00c6ff);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0, 174, 255, 0.3);
+    }
+
+    .btn.primary:hover {
+      background: linear-gradient(90deg, #00c6ff, #007bff);
+      transform: scale(1.05);
+    }
+
+    .btn.outline {
+      background: transparent;
+      border: 2px solid #00aaff;
+      color: #00c6ff;
+    }
+
+    .btn.outline:hover {
+      background: rgba(0, 170, 255, 0.2);
+      transform: scale(1.05);
+    }
+
+    /* Inputs */
+    input {
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      outline: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 1rem;
+      width: 100%;
+      max-width: 300px;
+      text-align: center;
+      transition: 0.3s;
+    }
+
+    input:focus {
+      background: rgba(255, 255, 255, 0.18);
+      border-bottom: 2px solid #00aaff;
+    }
+
+    /* Screens */
+    .screen {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      min-height: 65vh;
+      animation: fadeIn 0.6s ease forwards;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Lista de jogadores */
+    .players ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .players li {
+      margin: 8px 0;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    /* Perguntas */
+    .question-card {
+      background: #ffffff;
+      color: #001f3f;
+      border-radius: 16px;
+      padding: 25px;
+      text-align: left;
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+    }
+
+    .question {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 18px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .options-grid button {
+      padding: 14px;
+      font-weight: 700;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      background: #f5f8ff;
+      transition: all 0.25s;
+    }
+
+    .options-grid button:hover {
+      background: #e3edff;
+      border-color: #007bff;
+      transform: scale(1.03);
+    }
+
+    /* Resultado */
+    .podium {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin: 20px 0;
+    }
+
+    .podium .place {
+      background: rgba(255, 255, 255, 0.9);
+      color: #001f3f;
+      padding: 20px;
+      border-radius: 12px;
+      min-width: 120px;
+      font-weight: 700;
+    }
+
+    .podium .first {
+      background: linear-gradient(90deg, #ffd700, #fff2b3);
+      transform: scale(1.05);
+    }
+  </style>
 </head>
+
 <body>
   <div id="app">
-    <div class="card lobby active" id="lobbyScreen">
-      <h1 style="text-align:center; font-size:2.2rem; color:#fff;">A NARRAÇÃO</h1>
-      <p style="text-align:center; font-size:0.95rem; color:#8ea7cf; margin-top:-10px;">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
-      <div class="row">
-        <input type="text" id="playerName" placeholder="Seu nome" />
-        <button class="btn primary" id="createRoomBtn">Criar Sala</button>
-      </div>
-      <div class="row">
-        <input type="text" id="roomCode" placeholder="Código da sala" />
-        <button class="btn outline" id="joinRoomBtn">Entrar na Sala</button>
-      </div>
-      <p class="hint">Crie uma sala e compartilhe o código com seus amigos!</p>
-    </div>
+    <header class="main-header">
+      <h1 class="game-title">🎬 A NARRAÇÃO</h1>
+      <p class="credits">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
+    </header>
 
-    <div class="card room" id="roomScreen" style="display:none;">
-      <div class="top">
-        <h2>Sala: <span id="roomDisplayCode"></span></h2>
-        <p>Jogador: <span id="displayName"></span></p>
+    <!-- LOBBY -->
+    <section id="lobby" class="screen active">
+      <div class="card">
+        <h2>Crie ou entre em uma sala</h2>
+        <p style="color:#cbd8ff;">Junte seus amigos e descubra quem entende mais de narração!</p>
+        <br>
+        <input type="text" id="nickname" placeholder="Digite seu nome..." /><br><br>
+        <button class="btn primary" id="createRoomBtn">Criar Sala 🎯</button>
+        <p style="margin:15px 0; font-weight:600;">ou</p>
+        <input type="text" id="roomCode" placeholder="Código da sala..." /><br><br>
+        <button class="btn outline" id="joinRoomBtn">Entrar na Sala 🚪</button>
       </div>
-      <button id="startGameBtn" class="btn primary">Iniciar Jogo</button>
-      <div class="players">
-        <h3>Jogadores na sala:</h3>
-        <ul id="playerList"></ul>
-      </div>
-    </div>
+    </section>
 
-    <div class="card game" id="gameScreen" style="display:none;">
-      <div class="game-header">
-        <h3 id="questionCounter"></h3>
-        <h3>⏱ <span id="timer">15</span>s</h3>
+    <!-- SALA -->
+    <section id="room" class="screen">
+      <div class="card">
+        <h2>Sala: <span id="roomCodeDisplay"></span></h2>
+        <div class="players">
+          <h3>Jogadores</h3>
+          <ul id="playerList"></ul>
+        </div>
+        <br>
+        <button class="btn primary" id="startGameBtn">Iniciar Jogo 🎮</button>
       </div>
-      <div class="question-card">
-        <div class="question" id="questionText">Carregando pergunta...</div>
-        <div class="options-grid" id="optionsContainer"></div>
-      </div>
-      <div id="roundStatus"></div>
-    </div>
+    </section>
 
-    <div class="card results" id="resultScreen" style="display:none;">
-      <h2>🏆 Resultado Final</h2>
-      <div class="podium" id="podium"></div>
-      <div id="finalRanking"></div>
-      <button class="btn primary" id="backToLobbyBtn">Voltar ao Lobby</button>
-    </div>
+    <!-- JOGO -->
+    <section id="game" class="screen">
+      <div class="card">
+        <div class="game-header">
+          <span id="roundLabel">Rodada 1</span>
+          <span id="timer">15s</span>
+        </div>
+        <div class="question-card">
+          <div class="question" id="questionText">Pergunta aparecerá aqui...</div>
+          <div class="options-grid" id="options"></div>
+          <div id="roundStatus"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTADOS -->
+    <section id="results" class="screen">
+      <div class="card">
+        <h2>🏆 Fim do Jogo!</h2>
+        <div class="podium" id="podium"></div>
+        <div id="finalRanking"></div>
+        <br>
+        <button class="btn primary" id="backToLobbyBtn">Voltar ao Início</button>
+      </div>
+    </section>
   </div>
 
-  <!-- CONEXÃO COM O SCRIPT -->
   <script src="script.js"></script>
 </body>
 </html>
