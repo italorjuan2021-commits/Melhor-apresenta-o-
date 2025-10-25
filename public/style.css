@@ -1,207 +1,77 @@
-/* 🔥 Fundo animado premium */
-body {
-  margin: 0;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: linear-gradient(270deg, #001f3f, #004080, #0077cc, #001f3f);
-  background-size: 800% 800%;
-  animation: gradientShift 18s ease infinite;
-  color: #fff;
-  overflow-x: hidden;
+/* style.css - A NARRAÇÃO (mobile-first, azul safira) */
+:root{
+  --bg-1: #022c5b;
+  --card: rgba(255,255,255,0.07);
+  --accent: #0f52ba;
+  --accent-2: #1e90ff;
+  --muted: #9fb7e6;
+  --good: #16a34a;
+  --bad: #ef4444;
+  --question-bg: #ffffff;
+  --question-text: #051029;
 }
 
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
+*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),#021025);color:var(--muted);-webkit-font-smoothing:antialiased}
+body{display:flex;justify-content:center;padding:18px}
 
-/* Container geral */
-#app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 20px;
-  text-align: center;
-}
+#app{width:100%;max-width:420px}
 
-/* Título principal */
-.main-header {
-  margin-top: 30px;
-  margin-bottom: 30px;
-}
+/* Title */
+.main-header{text-align:center;margin-bottom:14px}
+.game-title{font-size:28px;color:#eaf3ff;margin:6px 0;text-shadow:0 6px 30px rgba(15,82,186,0.18)}
+.credits{font-size:12px;color:var(--muted);margin-top:2px}
 
-.game-title {
-  font-size: 3rem;
-  background: linear-gradient(90deg, #00c6ff, #0072ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 0 30px rgba(0, 162, 255, 0.3);
-  font-weight: 800;
-  letter-spacing: 1px;
-}
+/* Card */
+.screen{display:none}
+.screen.active{display:block}
+.card{background:var(--card);border-radius:16px;padding:18px;margin-bottom:14px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 30px rgba(0,0,0,0.45)}
+.muted{color:var(--muted)}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 
-.credits {
-  font-size: 1rem;
-  color: #c9dbff;
-  margin-top: 6px;
-  opacity: 0.85;
-}
+/* Inputs and hints */
+input{width:100%;padding:12px;border-radius:12px;border:none;background:rgba(255,255,255,0.06);color:#fff;font-size:15px}
+.hint{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
+button.btn{border:none;padding:12px 14px;border-radius:12px;font-weight:700;cursor:pointer;transition:transform .18s,box-shadow .18s}
+button.btn:active{transform:translateY(1px)}
 
-/* Card com efeito vidro */
-.card {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  padding: 25px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
-  transition: all 0.4s ease;
-}
+.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 8px 30px rgba(15,82,186,0.18)}
+.btn.outline{background:transparent;border:1px solid rgba(255,255,255,0.08);color:#eaf3ff}
 
-.card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-}
+/* Players list */
+.players ul{list-style:none;padding:0;margin:8px 0 0 0}
+.players li{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;color:#eaf3ff;margin-bottom:8px;display:flex;justify-content:space-between}
 
-/* Botões */
-.btn {
-  padding: 12px 22px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.25s ease;
-}
+/* Game header */
+.game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:#eaf3ff}
+#timer{font-weight:800}
 
-.btn.primary {
-  background: linear-gradient(90deg, #007bff, #00c6ff);
-  color: white;
-  box-shadow: 0 4px 15px rgba(0, 174, 255, 0.3);
-}
+/* Question card styled white */
+.question-card{background:var(--question-bg);color:var(--question-text);padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.12)}
+.question{font-size:18px;font-weight:800;margin-bottom:14px;line-height:1.25}
 
-.btn.primary:hover {
-  background: linear-gradient(90deg, #00c6ff, #007bff);
-  transform: scale(1.05);
-}
+/* Options grid (two columns on bigger) */
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.options-grid button{background:#f3f7ff;border-radius:10px;padding:12px;border:1px solid rgba(10,24,48,0.06);font-weight:700;cursor:pointer;text-align:left}
+.options-grid button:hover{transform:scale(1.02);border-color:var(--accent);box-shadow:0 8px 20px rgba(15,82,186,0.06)}
+.options-grid button.correct{background:var(--good);color:#06220f}
+.options-grid button.wrong{background:var(--bad);color:#fff}
+.options-grid button[disabled]{opacity:0.7;cursor:not-allowed}
 
-.btn.outline {
-  background: transparent;
-  border: 2px solid #00aaff;
-  color: #00c6ff;
-}
+/* Round status */
+#roundStatus{margin-top:10px;color:#334155}
 
-.btn.outline:hover {
-  background: rgba(0, 170, 255, 0.2);
-  transform: scale(1.05);
-}
+/* Podium */
+.podium{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.podium .place{padding:12px;border-radius:10px;background:#fff;color:var(--question-text);min-width:100px;text-align:center;font-weight:700}
+.podium .first{background:linear-gradient(90deg,#ffd700,#ffeb9f);transform:scale(1.05)}
 
-/* Inputs */
-input {
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  outline: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 1rem;
-  width: 100%;
-  max-width: 300px;
-  text-align: center;
-  transition: 0.3s;
-}
+/* Final ranking */
+#finalRanking p{background:#fff;padding:10px;border-radius:8px;color:var(--question-text);margin:8px 0}
 
-input:focus {
-  background: rgba(255, 255, 255, 0.18);
-  border-bottom: 2px solid #00aaff;
-}
-
-/* Screens */
-.screen {
-  display: none;
-  justify-content: center;
-  align-items: center;
-  min-height: 65vh;
-  animation: fadeIn 0.6s ease forwards;
-}
-
-.screen.active {
-  display: flex;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Lista de jogadores */
-.players ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.players li {
-  margin: 8px 0;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 10px;
-}
-
-/* Perguntas */
-.question-card {
-  background: #ffffff;
-  color: #001f3f;
-  border-radius: 16px;
-  padding: 25px;
-  text-align: left;
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
-}
-
-.question {
-  font-size: 1.6rem;
-  font-weight: 800;
-  margin-bottom: 18px;
-}
-
-.options-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-}
-
-.options-grid button {
-  padding: 14px;
-  font-weight: 700;
-  border-radius: 10px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  background: #f5f8ff;
-  transition: all 0.25s;
-}
-
-.options-grid button:hover {
-  background: #e3edff;
-  border-color: #007bff;
-  transform: scale(1.03);
-}
-
-/* Resultado */
-.podium {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.podium .place {
-  background: rgba(255, 255, 255, 0.9);
-  color: #001f3f;
-  padding: 20px;
-  border-radius: 12px;
-  min-width: 120px;
-  font-weight: 700;
-}
-
-.podium .first {
-  background: linear-gradient(90deg, #ffd700, #fff2b3);
-  transform: scale(1.05);
+/* responsiveness */
+@media(max-width:420px){
+  .options-grid{grid-template-columns:1fr}
+  .question{font-size:16px}
+  .game-title{font-size:24px}
 }
