@@ -2,227 +2,224 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const { customAlphabet } = require('nanoid');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server);
 
-app.use(express.static('public'));
+// Servir arquivos estáticos da pasta public
+app.use(express.static(path.join(__dirname, 'public')));
 
-const nanoid = customAlphabet('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 6);
+const PORT = process.env.PORT || 3000;
 
-const rooms = new Map();
-const MAX_PLAYERS_PER_ROOM = 50;
-const QUESTIONS_COUNT = 10;
-const POINTS_PER_QUESTION = 10;
+// --- CONFIG ---
+const ROOM_MAX_PLAYERS = 50;
+const QUESTIONS_COUNT = 10; // 10 perguntas por jogo
 const PRE_START_SECONDS = 5;
 const QUESTION_SECONDS = 15;
+const POINTS_PER_QUESTION = 10;
 
-const QUESTIONS_POOL = [
-  { q: "O que é narração?", opts: ["Descrever objetos","Contar uma história","Argumentar um ponto","Explicar um experimento"], a: 1 },
-  { q: "Quem é o narrador?", opts: ["Quem lê o texto","Quem conta a história","Quem publica o texto","Um personagem secundário"], a: 1 },
-  { q: "O que é enredo?", opts: ["O tema do texto","A sequência de ações","O narrador","O tipo de linguagem"], a: 1 },
-  { q: "O que é espaço na narrativa?", opts: ["O tempo da história","As falas dos personagens","O lugar onde a história ocorre","O resumo do texto"], a: 2 },
-  { q: "Qual é o papel do conflito?", opts: ["Resolver tudo","Gerar o problema central","Descrever o personagem","Controlar o tempo"], a: 1 },
-  { q: "O que significa narrador em 1ª pessoa?", opts: ["Narrador domina tudo","Narrador participa da história","Narrador é anônimo","Narrador é o autor"], a: 1 },
-  { q: "O narrador onisciente:", opts: ["Sabe tudo sobre personagens","Nunca fala","É sempre personagem","É o leitor"], a: 0 },
-  { q: "O que é clímax?", opts: ["A introdução","O ponto alto do conflito","O final resumido","O personagem principal"], a: 1 },
-  { q: "O que compõe uma narrativa?", opts: ["Personagens, enredo, tempo e espaço","Somente personagens","Somente enredo","Somente tempo"], a: 0 },
-  { q: "O desfecho é:", opts: ["O início da história","A resolução das ações","O sumário","A ficha técnica"], a: 1 }
+// Pool de perguntas (10). Se quiser trocar, modifique aqui.
+const QUESTION_POOL = [
+  { q: "O que é narração?", opts: ["Texto descritivo", "Texto que conta uma história", "Lista de instruções", "Resumo"], a: 1 },
+  { q: "Quem é o narrador?", opts: ["Autor", "Voz que conta a história", "Leitor", "Editor"], a: 1 },
+  { q: "O que é enredo?", opts: ["Sequência de acontecimentos", "Local da história", "Falas dos personagens", "Tema"], a: 0 },
+  { q: "O que é clímax?", opts: ["Início da história", "Ponto de maior tensão", "Resumo final", "Descrição do local"], a: 1 },
+  { q: "Qual elemento NÃO é essencial em uma narrativa?", opts: ["Enredo", "Personagens", "Estrutura de rimas", "Espaço"], a: 2 },
+  { q: "O que é o espaço na narração?", opts: ["Lugar onde acontece", "Tempo verbal", "Personagem secundário", "Tema"], a: 0 },
+  { q: "O narrador onisciente:", opts: ["Desconhece os pensamentos", "Sabe tudo sobre personagens", "É personagem principal", "Sempre usa 'eu'"], a: 1 },
+  { q: "O que é ponto de vista?", opts: ["Forma de contar a história", "Cor do livro", "Número de páginas", "Nome do autor"], a: 0 },
+  { q: "Narrador em primeira pessoa usa:", opts: ["'ele' ou 'ela'", "'nós'", "'eu'", "'vós'"], a: 2 },
+  { q: "Função principal da narração:", opts: ["Argumentar", "Contar história com começo, meio e fim", "Listar dados", "Dar instruções"], a: 1 }
 ];
 
-function shuffleArray(arr) {
-  const a = arr.slice();
-  for (let i = a.length-1; i>0; i--) {
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i], a[j]] = [a[j], a[i]];
+// --- Estado de todas as salas (em memória). Para produção, seria ideal usar Redis/DB.
+const rooms = {}; 
+/*
+rooms structure:
+rooms[code] = {
+  players: { socketId: { name, score } },
+  started: false,
+  questions: [ { q, opts, a } ],
+  currentIndex: 0,
+  answersThisRound: { socketId: answerIndex }, // track to avoid double answer
+  timers: { roundTimerId } // optional
+}
+*/
+
+// --- Helpers
+function makeRoomCode() {
+  return Math.random().toString(36).substring(2, 7).toUpperCase();
+}
+
+function pickQuestions() {
+  // shuffle and pick QUESTIONS_COUNT
+  const pool = [...QUESTION_POOL];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return a;
-}
-
-function shuffleOptionsWithAnswer(opts, correctIdx) {
-  const indexed = opts.map((o,i)=>({o,i}));
-  const shuffled = shuffleArray(indexed);
-  const newOpts = shuffled.map(s=>s.o);
-  const newCorrectIndex = shuffled.findIndex(s=>s.i===correctIdx);
-  return {opts: newOpts, correctIndex: newCorrectIndex};
-}
-
-function makeQuestions() {
-  const pool = shuffleArray([...QUESTIONS_POOL]);
   return pool.slice(0, QUESTIONS_COUNT);
 }
 
-function createRoom(hostSocketId, hostName){
-  const code = nanoid();
-  const room = {
-    code, hostId: hostSocketId, players: [], questions: makeQuestions(),
-    currentIndex: -1, status: 'waiting', timers:{}, _answers:{}, acceptingAnswers:false
-  };
-  rooms.set(code, room);
-  addPlayerToRoom(room, hostSocketId, hostName);
-  return room;
+function getPlayersArray(room) {
+  return Object.entries(room.players).map(([id, p]) => ({ id, name: p.name, score: p.score }));
 }
 
-function addPlayerToRoom(room, socketId, name){
-  if(room.players.length>=MAX_PLAYERS_PER_ROOM) return false;
-  room.players.push({id: socketId, name, score:0, correctCount:0});
-  return true;
-}
+// --- Socket.IO logic
+io.on('connection', socket => {
+  console.log('connected', socket.id);
 
-function removePlayerFromRoom(room, socketId){
-  room.players = room.players.filter(p=>p.id!==socketId);
-  if(room.hostId===socketId){
-    if(room.players.length>0) room.hostId=room.players[0].id;
-    else { clearRoomTimers(room); rooms.delete(room.code); }
-  }
-}
-
-function broadcastRoomUpdate(room){
-  io.to(room.code).emit('room_update',{
-    code: room.code, hostId: room.hostId, players: room.players,
-    status: room.status, currentIndex: room.currentIndex
-  });
-}
-
-function evaluateRound(room){
-  const idx = room.currentIndex;
-  const q = room.questions[idx];
-  if(!q) return;
-  const correctIdx = q.a_shuffled;
-  room.players.forEach(p=>{
-    const ans = room._answers[p.id];
-    if(ans!==undefined && ans===correctIdx){
-      p.score += POINTS_PER_QUESTION;
-      p.correctCount++;
-    }
-  });
-  const results = room.players.map(p=>({
-    id:p.id,name:p.name,score:p.score,correctCount:p.correctCount||0,
-    answered: room._answers[p.id]!==undefined,
-    givenAnswer: room._answers[p.id]!==undefined?room._answers[p.id]:null
-  })).sort((a,b)=>b.score-a.score);
-  io.to(room.code).emit('round_result',{
-    questionIndex: idx, correctIndex: correctIdx, players: results
-  });
-  room._answers={};
-}
-
-function sendQuestion(room){
-  if(!room) return;
-  if(room.currentIndex<0 || room.currentIndex>=room.questions.length){
-    finishRoom(room); return;
-  }
-  const qRaw = room.questions[room.currentIndex];
-  const {opts:shuffledOpts, correctIndex} = shuffleOptionsWithAnswer(qRaw.opts, qRaw.a);
-  room.questions[room.currentIndex].a_shuffled = correctIndex;
-
-  room._answers={};
-  room.acceptingAnswers=true;
-
-  io.to(room.code).emit('question',{
-    index: room.currentIndex, q:qRaw.q, options: shuffledOpts, time: QUESTION_SECONDS
-  });
-
-  room.timers.questionTimer = setTimeout(()=>{
-    room.acceptingAnswers=false;
-    evaluateRound(room);
-    clearTimeout(room.timers.questionTimer);
-    room.currentIndex++;
-    if(room.currentIndex>=room.questions.length) setTimeout(()=>finishRoom(room),2000);
-    else setTimeout(()=>sendQuestion(room),2000);
-  },QUESTION_SECONDS*1000);
-}
-
-function startRoomCountdown(room){
-  room.status='starting';
-  let sec = PRE_START_SECONDS;
-  io.to(room.code).emit('countdown_start',{seconds:sec});
-  room.timers.startTimer = setInterval(()=>{
-    sec--;
-    io.to(room.code).emit('countdown_tick',{seconds:sec});
-    if(sec<=0){ clearInterval(room.timers.startTimer); room.status='in-progress'; room.currentIndex=0; sendQuestion(room);}
-  },1000);
-}
-
-function finishRoom(room){
-  room.status='finished';
-  const ranking = room.players.map(p=>({
-    name:p.name, score:p.score, correctCount:p.correctCount||0,
-    accuracy: Math.round(((p.correctCount||0)/QUESTIONS_COUNT)*100)
-  })).sort((a,b)=>b.score-b.score);
-  io.to(room.code).emit('final_results',{ranking, top5: ranking.slice(0,5)});
-}
-
-function clearRoomTimers(room){
-  if(room.timers.startTimer) clearInterval(room.timers.startTimer);
-  if(room.timers.questionTimer) clearTimeout(room.timers.questionTimer);
-  room.timers={};
-}
-
-io.on('connection', socket=>{
-  console.log('conn:',socket.id);
-
-  socket.on('create_room',(name,cb)=>{
-    const room = createRoom(socket.id,name);
-    socket.join(room.code);
-    cb && cb({ok:true, code:room.code});
-    broadcastRoomUpdate(room);
-  });
-
-  socket.on('join_room',(data,cb)=>{
-    const {code,name} = data;
-    const room = rooms.get(code);
-    if(!room) return cb && cb({ok:false,msg:'Sala não existe'});
-    if(room.players.length>=MAX_PLAYERS_PER_ROOM) return cb && cb({ok:false,msg:'Sala cheia'});
-    if(room.status!=='waiting') return cb && cb({ok:false,msg:'Jogo já começou'});
-    addPlayerToRoom(room,socket.id,name);
+  socket.on('createRoom', (playerName) => {
+    const code = makeRoomCode();
+    const room = {
+      players: {},
+      started: false,
+      questions: pickQuestions(),
+      currentIndex: 0,
+      answersThisRound: {},
+      timers: {}
+    };
+    rooms[code] = room;
+    room.players[socket.id] = { name: playerName, score: 0 };
     socket.join(code);
-    cb && cb({ok:true});
-    broadcastRoomUpdate(room);
+    socket.emit('roomCreated', code);
+    io.to(code).emit('updatePlayers', getPlayersArray(room));
+    console.log(`Room ${code} created by ${playerName}`);
   });
 
-  socket.on('start_room',(code,cb)=>{
-    const room = rooms.get(code);
-    if(!room) return cb && cb({ok:false,msg:'Sala inválida'});
-    if(socket.id!==room.hostId) return cb && cb({ok:false,msg:'Somente host'});
-    if(room.status!=='waiting') return cb && cb({ok:false,msg:'Jogo já iniciado'});
-    startRoomCountdown(room);
-    cb && cb({ok:true});
+  socket.on('joinRoom', ({ roomCode, playerName }) => {
+    const code = (roomCode || '').toUpperCase();
+    const room = rooms[code];
+    if (!room) {
+      socket.emit('roomError', 'Sala não encontrada.');
+      return;
+    }
+    if (room.started) {
+      socket.emit('roomError', 'Jogo já iniciado na sala.');
+      return;
+    }
+    const count = Object.keys(room.players).length;
+    if (count >= ROOM_MAX_PLAYERS) {
+      socket.emit('roomError', 'Sala lotada.');
+      return;
+    }
+    room.players[socket.id] = { name: playerName, score: 0 };
+    socket.join(code);
+    io.to(code).emit('updatePlayers', getPlayersArray(room));
+    socket.emit('roomJoined', { roomCode: code, players: getPlayersArray(room) });
+    console.log(`${playerName} joined room ${code}`);
   });
 
-  socket.on('submit_answer',(data)=>{
-    const {code, answerIndex} = data;
-    const room = rooms.get(code);
-    if(!room || room.status!=='in-progress') return;
-    if(!room.acceptingAnswers) return;
-    if(room._answers[socket.id]!==undefined) return;
-    room._answers[socket.id]=answerIndex;
+  socket.on('startGame', (roomCode) => {
+    const code = (roomCode || '').toUpperCase();
+    const room = rooms[code];
+    if (!room) {
+      socket.emit('roomError', 'Sala não existe.');
+      return;
+    }
+    if (room.started) {
+      socket.emit('roomError', 'Jogo já está em andamento.');
+      return;
+    }
+    room.started = true;
+    room.currentIndex = 0;
+    // broadcast pre-start countdown to all players
+    io.to(code).emit('preStart', { seconds: PRE_START_SECONDS });
+    // after PRE_START_SECONDS, start first question
+    setTimeout(() => {
+      sendQuestionToRoom(code);
+    }, PRE_START_SECONDS * 1000);
+    console.log(`Game started in room ${code}`);
   });
 
-  socket.on('leave_room',(code)=>{
-    const room = rooms.get(code);
-    if(!room) return;
-    removePlayerFromRoom(room,socket.id);
+  socket.on('answer', ({ roomCode, playerName, answerIndex }) => {
+    const code = (roomCode || '').toUpperCase();
+    const room = rooms[code];
+    if (!room || !room.started) return;
+    // prevent if round finished or already answered by this socket
+    if (room.answersThisRound[socket.id] !== undefined) return;
+    // record answer
+    room.answersThisRound[socket.id] = answerIndex;
+    // evaluate correctness immediately for score
+    const currentQuestion = room.questions[room.currentIndex];
+    const isCorrect = answerIndex === currentQuestion.a;
+    if (isCorrect) {
+      if (room.players[socket.id]) room.players[socket.id].score += POINTS_PER_QUESTION;
+    }
+    // update scoreboard to clients (live)
+    io.to(code).emit('updatePlayers', getPlayersArray(room));
+  });
+
+  socket.on('leaveRoom', (roomCode) => {
+    const code = (roomCode || '').toUpperCase();
+    const room = rooms[code];
+    if (!room) return;
+    if (room.players[socket.id]) delete room.players[socket.id];
     socket.leave(code);
-    broadcastRoomUpdate(room);
+    io.to(code).emit('updatePlayers', getPlayersArray(room));
   });
 
-  socket.on('disconnect',()=>{
-    rooms.forEach(room=>{
-      const p = room.players.findIndex(p=>p.id===socket.id);
-      if(p!==-1){
-        room.players.splice(p,1);
-        broadcastRoomUpdate(room);
-        if(room.hostId===socket.id){
-          if(room.players.length>0) room.hostId=room.players[0].id;
-          else { clearRoomTimers(room); rooms.delete(room.code); }
-        }
+  socket.on('disconnect', () => {
+    // remove from any room
+    for (const code of Object.keys(rooms)) {
+      const room = rooms[code];
+      if (room && room.players[socket.id]) {
+        delete room.players[socket.id];
+        io.to(code).emit('updatePlayers', getPlayersArray(room));
       }
-    });
+    }
   });
 });
 
-const PORT = process.env.PORT||3000;
-server.listen(PORT,()=>console.log('Server running on',PORT)););
+// --- Question flow per room ---
+function sendQuestionToRoom(code) {
+  const room = rooms[code];
+  if (!room) return;
+
+  if (room.currentIndex >= room.questions.length) {
+    // game finished — compute ranking
+    const ranking = getPlayersArray(room).sort((a, b) => b.score - a.score);
+    io.to(code).emit('showResults', ranking);
+    return;
+  }
+
+  const q = room.questions[room.currentIndex];
+  // send question (shuffle options before sending to keep different order clients)
+  // To keep correct answer index after shuffling, we shuffle on server and send options + correctIndex.
+  const opts = [...q.opts];
+  const indices = opts.map((_, idx) => idx);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  const shuffledOptions = indices.map(i => opts[i]);
+  const correctIndexShuffled = indices.indexOf(q.a);
+
+  // reset answers for this round
+  room.answersThisRound = {};
+
+  io.to(code).emit('question', {
+    question: q.q,
+    options: shuffledOptions,
+    correctIndex: correctIndexShuffled,
+    time: QUESTION_SECONDS
+  });
+
+  // after time + small buffer, reveal correct and move on
+  room.timers.roundTimer = setTimeout(() => {
+    // reveal: send correctIndex (clients will highlight)
+    io.to(code).emit('reveal', { correctIndex: correctIndexShuffled });
+
+    // small pause to show reveal (2s) then advance to next question
+    setTimeout(() => {
+      room.currentIndex++;
+      sendQuestionToRoom(code);
+    }, 2000);
+  }, QUESTION_SECONDS * 1000 + 300);
+}
+
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
