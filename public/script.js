@@ -1,164 +1,273 @@
-const lobbyScreen = document.getElementById("lobby");
-const roomScreen = document.getElementById("room");
-const gameScreen = document.getElementById("game");
-const resultScreen = document.getElementById("result");
+const socket = io();
+
+// ======= ELEMENTOS =======
+const screens = {
+  lobby: document.getElementById("lobby"),
+  game: document.getElementById("game"),
+  result: document.getElementById("result"),
+};
 
 const nicknameInput = document.getElementById("nickname");
-const roomCodeInput = document.getElementById("roomCode");
-const createRoomBtn = document.getElementById("createRoomBtn");
-const joinRoomBtn = document.getElementById("joinRoomBtn");
-const roomCodeDisplay = document.getElementById("roomCodeDisplay");
-const playerList = document.getElementById("playerList");
-const startGameBtn = document.getElementById("startGameBtn");
-const backToLobbyBtn = document.getElementById("backToLobbyBtn");
+const roomCodeInput = document.getElementById("room-code");
+const createBtn = document.getElementById("create-room");
+const joinBtn = document.getElementById("join-room");
+const playAgainBtn = document.getElementById("play-again");
 
-const questionText = document.getElementById("questionText");
+const roomDisplay = document.getElementById("room-display");
+const questionText = document.getElementById("question-text");
 const optionsContainer = document.getElementById("options");
-const timerDisplay = document.getElementById("timer");
-const roundLabel = document.getElementById("roundLabel");
+const timerBar = document.getElementById("timer-fill");
+const rankingContainer = document.getElementById("ranking");
 
-const finalScoreEl = document.getElementById("final-score");
-const accuracyEl = document.getElementById("accuracy");
+const clickSound = document.getElementById("click-sound");
+const correctSound = document.getElementById("correct-sound");
+const wrongSound = document.getElementById("wrong-sound");
 
-let players = [];
-let currentPlayer = {};
-let roomCode = "";
-let currentQuestion = 0;
-let score = 0;
-let timer;
+let currentRoom = "";
+let playerName = "";
+let selected = false;
+let timerInterval;
 let timeLeft = 10;
+let questionIndex = 0;
+let questions = [];
+let score = 0;
+let totalAnswered = 0;
+let answeredPlayers = 0;
+let totalPlayers = 1;
 
-// Simulação de perguntas
-const questions = [
+// ======= PERGUNTAS (10) =======
+questions = [
   {
-    q: "O que é uma narração?",
-    a: ["Um texto que descreve sentimentos", "Um texto que relata fatos", "Um texto argumentativo", "Uma conversa informal"],
-    correct: 1
+    question: "O que é uma narração?",
+    options: [
+      "Um texto que conta uma história com personagens e tempo",
+      "Uma explicação científica sobre fatos",
+      "Uma lista de instruções ou regras",
+      "Uma descrição detalhada de um lugar"
+    ],
+    answer: 0,
   },
   {
-    q: "Qual é o principal elemento da narração?",
-    a: ["Personagem", "Tema", "Narrador", "Rima"],
-    correct: 2
+    question: "O que geralmente inicia uma narrativa?",
+    options: [
+      "Apresentação de personagens e cenário",
+      "Conclusão da história",
+      "Conflito final",
+      "Moral da história"
+    ],
+    answer: 0,
   },
   {
-    q: "O tempo da história indica...",
-    a: ["Quando e quanto tempo se passa", "O local onde ocorre", "O autor da história", "O conflito dos personagens"],
-    correct: 0
+    question: "Qual é o elemento principal da narração?",
+    options: [
+      "Personagem",
+      "Tempo verbal",
+      "Verbo de ligação",
+      "Figura de linguagem"
+    ],
+    answer: 0,
   },
   {
-    q: "Quem conta a história é o...",
-    a: ["Personagem", "Narrador", "Leitor", "Autor"],
-    correct: 1
-  }
+    question: "O narrador que participa da história é chamado de:",
+    options: [
+      "Narrador-personagem",
+      "Narrador-observador",
+      "Narrador-onisciente",
+      "Narrador-coadjuvante"
+    ],
+    answer: 0,
+  },
+  {
+    question: "Qual é o tempo verbal mais comum em narrativas?",
+    options: ["Pretérito perfeito", "Futuro do presente", "Presente do indicativo", "Infinitivo"],
+    answer: 0,
+  },
+  {
+    question: "O conflito em uma narração serve para:",
+    options: [
+      "Gerar interesse e movimentar a história",
+      "Apresentar o título",
+      "Definir o espaço físico",
+      "Indicar o narrador"
+    ],
+    answer: 0,
+  },
+  {
+    question: "Qual dessas opções representa um enredo?",
+    options: [
+      "A sequência de acontecimentos da história",
+      "A descrição de um objeto",
+      "O pensamento do narrador",
+      "A moral da história"
+    ],
+    answer: 0,
+  },
+  {
+    question: "O desfecho da história é o momento em que:",
+    options: [
+      "Os conflitos são resolvidos",
+      "O narrador é apresentado",
+      "A história começa",
+      "Os personagens são descritos"
+    ],
+    answer: 0,
+  },
+  {
+    question: "Qual é a diferença entre narrador e autor?",
+    options: [
+      "O narrador conta a história; o autor cria a história",
+      "O autor conta a história; o narrador cria a história",
+      "Ambos são o mesmo",
+      "O narrador é sempre o protagonista"
+    ],
+    answer: 0,
+  },
+  {
+    question: "O clímax de uma narrativa é:",
+    options: [
+      "O ponto mais intenso do conflito",
+      "O início da história",
+      "A conclusão da moral",
+      "A descrição dos personagens"
+    ],
+    answer: 0,
+  },
 ];
 
-function showScreen(id) {
-  [lobbyScreen, roomScreen, gameScreen, resultScreen].forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+// ======= FUNÇÕES =======
+function showScreen(name) {
+  Object.values(screens).forEach(s => s.classList.remove("active"));
+  screens[name].classList.add("active");
 }
 
-createRoomBtn.onclick = () => {
-  if (!nicknameInput.value.trim()) return alert("Digite seu nome!");
-  roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
-  roomCodeDisplay.textContent = roomCode;
-  players = [nicknameInput.value.trim()];
-  currentPlayer.name = nicknameInput.value.trim();
-  updatePlayerList();
-  showScreen("room");
-};
-
-joinRoomBtn.onclick = () => {
-  if (!roomCodeInput.value.trim() || !nicknameInput.value.trim()) return alert("Preencha todos os campos!");
-  roomCode = roomCodeInput.value.trim().toUpperCase();
-  currentPlayer.name = nicknameInput.value.trim();
-  players.push(currentPlayer.name);
-  roomCodeDisplay.textContent = roomCode;
-  updatePlayerList();
-  showScreen("room");
-};
-
-startGameBtn.onclick = () => startGame();
-backToLobbyBtn.onclick = () => location.reload();
-
-function updatePlayerList() {
-  playerList.innerHTML = players.map(p => `<li>${p}</li>`).join("");
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
 }
 
-function startGame() {
+function playSound(audio) {
+  audio.currentTime = 0;
+  audio.play();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timeLeft = 10;
+  timerBar.style.width = "100%";
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerBar.style.width = `${(timeLeft / 10) * 100}%`;
+    if (timeLeft <= 0) {
+      clearInterval(timerInterval);
+      if (!selected) {
+        disableOptions();
+        socket.emit("playerAnswered", { room: currentRoom, player: playerName, correct: false });
+      }
+    }
+  }, 1000);
+}
+
+function disableOptions() {
+  document.querySelectorAll(".option").forEach(btn => btn.classList.add("disabled"));
+}
+
+// ======= EVENTOS DO LOBBY =======
+createBtn.onclick = () => {
+  playerName = nicknameInput.value.trim();
+  if (!playerName) return alert("Digite seu nome!");
+  playSound(clickSound);
+  socket.emit("createRoom", playerName);
+};
+
+joinBtn.onclick = () => {
+  playerName = nicknameInput.value.trim();
+  const room = roomCodeInput.value.trim().toUpperCase();
+  if (!playerName || !room) return alert("Preencha todos os campos!");
+  playSound(clickSound);
+  socket.emit("joinRoom", { playerName, room });
+};
+
+playAgainBtn.onclick = () => {
+  location.reload();
+};
+
+// ======= SOCKET.IO =======
+socket.on("roomCreated", room => {
+  currentRoom = room;
+  roomDisplay.textContent = "Sala: " + room;
   showScreen("game");
-  score = 0;
-  currentQuestion = 0;
-  showQuestion();
-}
+  socket.emit("startGame", { room, questions });
+});
 
-function showQuestion() {
-  if (currentQuestion >= questions.length) return endGame();
+socket.on("joinedRoom", room => {
+  currentRoom = room;
+  roomDisplay.textContent = "Sala: " + room;
+  showScreen("game");
+});
 
-  const q = questions[currentQuestion];
-  questionText.textContent = q.q;
-  roundLabel.textContent = `Pergunta ${currentQuestion + 1}`;
+socket.on("startQuestion", qData => {
+  showScreen("game");
+  renderQuestion(qData);
+});
+
+socket.on("allAnswered", () => {
+  revealCorrect();
+});
+
+socket.on("gameOver", ranking => {
+  renderRanking(ranking);
+  showScreen("result");
+});
+
+// ======= RENDER PERGUNTAS =======
+function renderQuestion(qData) {
+  selected = false;
+  questionText.textContent = qData.question;
   optionsContainer.innerHTML = "";
 
-  q.a.forEach((opt, i) => {
-    const btn = document.createElement("button");
+  const randomized = shuffle([...qData.options]);
+  randomized.forEach(opt => {
+    const btn = document.createElement("div");
     btn.textContent = opt;
-    btn.onclick = () => selectAnswer(i);
+    btn.classList.add("option");
+    btn.onclick = () => {
+      if (selected) return;
+      selected = true;
+      disableOptions();
+
+      const isCorrect = opt === qData.options[qData.answer];
+      if (isCorrect) {
+        btn.classList.add("correct");
+        playSound(correctSound);
+      } else {
+        btn.classList.add("wrong");
+        playSound(wrongSound);
+      }
+
+      socket.emit("playerAnswered", {
+        room: currentRoom,
+        player: playerName,
+        correct: isCorrect,
+      });
+    };
     optionsContainer.appendChild(btn);
   });
 
   startTimer();
 }
 
-function startTimer() {
-  timeLeft = 10;
-  timerDisplay.textContent = `${timeLeft}s`;
-  clearInterval(timer);
-  timer = setInterval(() => {
-    timeLeft--;
-    timerDisplay.textContent = `${timeLeft}s`;
-
-    if (timeLeft <= 0) {
-      clearInterval(timer);
-      lockAnswers();
-      setTimeout(() => nextQuestion(), 1000);
+function revealCorrect() {
+  document.querySelectorAll(".option").forEach(btn => {
+    if (btn.textContent === questions[questionIndex].options[questions[questionIndex].answer]) {
+      btn.classList.add("correct");
     }
-  }, 1000);
-}
-
-function selectAnswer(index) {
-  clearInterval(timer);
-  const q = questions[currentQuestion];
-  const buttons = optionsContainer.querySelectorAll("button");
-
-  buttons.forEach((btn, i) => {
-    btn.disabled = true;
-    if (i === q.correct) btn.classList.add("correct");
-    else if (i === index && i !== q.correct) btn.classList.add("wrong");
-  });
-
-  if (index === q.correct) score++;
-
-  setTimeout(() => nextQuestion(), 1000);
-}
-
-function lockAnswers() {
-  const q = questions[currentQuestion];
-  const buttons = optionsContainer.querySelectorAll("button");
-
-  buttons.forEach((btn, i) => {
-    btn.disabled = true;
-    if (i === q.correct) btn.classList.add("correct");
   });
 }
 
-function nextQuestion() {
-  currentQuestion++;
-  showQuestion();
-}
-
-function endGame() {
-  showScreen("result");
-  finalScoreEl.textContent = `Pontuação: ${score}/${questions.length}`;
-  const accuracy = Math.round((score / questions.length) * 100);
-  accuracyEl.textContent = `Aproveitamento: ${accuracy}%`;
+function renderRanking(ranking) {
+  rankingContainer.innerHTML = "<h3>Ranking Final</h3>";
+  ranking.forEach((p, i) => {
+    const el = document.createElement("p");
+    el.textContent = `${i + 1}. ${p.name} — ${p.score} pts`;
+    rankingContainer.appendChild(el);
+  });
 }
