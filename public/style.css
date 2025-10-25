@@ -1,77 +1,130 @@
-/* style.css - A NARRAÇÃO (mobile-first, azul safira) */
-:root{
-  --bg-1: #022c5b;
-  --card: rgba(255,255,255,0.07);
-  --accent: #0f52ba;
-  --accent-2: #1e90ff;
-  --muted: #9fb7e6;
-  --good: #16a34a;
-  --bad: #ef4444;
-  --question-bg: #ffffff;
-  --question-text: #051029;
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
 }
 
-*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
-html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),#021025);color:var(--muted);-webkit-font-smoothing:antialiased}
-body{display:flex;justify-content:center;padding:18px}
+body {
+  background: linear-gradient(270deg, #001f3f, #004080, #0077cc, #001f3f);
+  background-size: 800% 800%;
+  animation: gradientShift 18s ease infinite;
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: hidden;
+}
 
-#app{width:100%;max-width:420px}
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
-/* Title */
-.main-header{text-align:center;margin-bottom:14px}
-.game-title{font-size:28px;color:#eaf3ff;margin:6px 0;text-shadow:0 6px 30px rgba(15,82,186,0.18)}
-.credits{font-size:12px;color:var(--muted);margin-top:2px}
+#app {
+  width: 100%;
+  max-width: 500px;
+  text-align: center;
+  padding: 20px;
+}
 
-/* Card */
-.screen{display:none}
-.screen.active{display:block}
-.card{background:var(--card);border-radius:16px;padding:18px;margin-bottom:14px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 30px rgba(0,0,0,0.45)}
-.muted{color:var(--muted)}
-.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 25px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.6s ease;
+}
 
-/* Inputs and hints */
-input{width:100%;padding:12px;border-radius:12px;border:none;background:rgba(255,255,255,0.06);color:#fff;font-size:15px}
-.hint{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
-button.btn{border:none;padding:12px 14px;border-radius:12px;font-weight:700;cursor:pointer;transition:transform .18s,box-shadow .18s}
-button.btn:active{transform:translateY(1px)}
+button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  background: linear-gradient(90deg, #007bff, #00c6ff);
+  color: white;
+  margin: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 5px 15px rgba(0, 162, 255, 0.4);
+}
 
-.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 8px 30px rgba(15,82,186,0.18)}
-.btn.outline{background:transparent;border:1px solid rgba(255,255,255,0.08);color:#eaf3ff}
+button:hover {
+  transform: scale(1.07);
+  box-shadow: 0 8px 25px rgba(0, 162, 255, 0.6);
+}
 
-/* Players list */
-.players ul{list-style:none;padding:0;margin:8px 0 0 0}
-.players li{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;color:#eaf3ff;margin-bottom:8px;display:flex;justify-content:space-between}
+input {
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  width: 80%;
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
 
-/* Game header */
-.game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:#eaf3ff}
-#timer{font-weight:800}
+.question-card {
+  background: #fff;
+  color: #001f3f;
+  border-radius: 15px;
+  padding: 25px;
+  margin-top: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  text-align: left;
+}
 
-/* Question card styled white */
-.question-card{background:var(--question-bg);color:var(--question-text);padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.12)}
-.question{font-size:18px;font-weight:800;margin-bottom:14px;line-height:1.25}
+.question {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
 
-/* Options grid (two columns on bigger) */
-.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.options-grid button{background:#f3f7ff;border-radius:10px;padding:12px;border:1px solid rgba(10,24,48,0.06);font-weight:700;cursor:pointer;text-align:left}
-.options-grid button:hover{transform:scale(1.02);border-color:var(--accent);box-shadow:0 8px 20px rgba(15,82,186,0.06)}
-.options-grid button.correct{background:var(--good);color:#06220f}
-.options-grid button.wrong{background:var(--bad);color:#fff}
-.options-grid button[disabled]{opacity:0.7;cursor:not-allowed}
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
 
-/* Round status */
-#roundStatus{margin-top:10px;color:#334155}
+.options-grid button {
+  background: #f5f8ff;
+  color: #001f3f;
+  font-weight: 600;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+}
 
-/* Podium */
-.podium{display:flex;gap:8px;justify-content:center;margin:12px 0}
-.podium .place{padding:12px;border-radius:10px;background:#fff;color:var(--question-text);min-width:100px;text-align:center;font-weight:700}
-.podium .first{background:linear-gradient(90deg,#ffd700,#ffeb9f);transform:scale(1.05)}
+.options-grid button:hover {
+  background: #e3edff;
+  border-color: #007bff;
+  transform: scale(1.03);
+}
 
-/* Final ranking */
-#finalRanking p{background:#fff;padding:10px;border-radius:8px;color:var(--question-text);margin:8px 0}
+.options-grid button.correct {
+  background: #00ffae;
+  color: #001f3f;
+}
 
-/* responsiveness */
-@media(max-width:420px){
-  .options-grid{grid-template-columns:1fr}
-  .question{font-size:16px}
-  .game-title{font-size:24px}
+.options-grid button.wrong {
+  background: #ff4b4b;
+  color: #fff;
+}
+
+#timer {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #00c6ff;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
