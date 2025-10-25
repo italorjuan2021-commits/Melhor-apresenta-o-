@@ -1,13 +1,16 @@
 {
-  "name": "quiz-narracao-multiplayer",
+  "name": "a-narracao",
   "version": "1.0.0",
+  "description": "Quiz multiplayer A NARRAÇÃO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
+  "engines": {
+    "node": ">=16"
+  },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "nanoid": "^4.0.0"
+    "socket.io": "^4.7.2"
   }
 }
