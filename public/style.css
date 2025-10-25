@@ -1,169 +1,77 @@
-/* ===================== */
-/* VISUAL PRINCIPAL DO QUIZ */
-/* ===================== */
-
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Poppins", sans-serif;
-  background: linear-gradient(135deg, #001f3f, #004aad, #0074d9);
-  color: #000;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* style.css - A NARRAÇÃO (mobile-first, azul safira) */
+:root{
+  --bg-1: #022c5b;
+  --card: rgba(255,255,255,0.07);
+  --accent: #0f52ba;
+  --accent-2: #1e90ff;
+  --muted: #9fb7e6;
+  --good: #16a34a;
+  --bad: #ef4444;
+  --question-bg: #ffffff;
+  --question-text: #051029;
 }
 
-#game-container {
-  background: #ffffff;
-  width: 95%;
-  max-width: 450px;
-  border-radius: 25px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-  animation: fadeIn 1s ease;
-}
+*{box-sizing:border-box;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg-1),#021025);color:var(--muted);-webkit-font-smoothing:antialiased}
+body{display:flex;justify-content:center;padding:18px}
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+#app{width:100%;max-width:420px}
 
-/* ===================== */
-/* TÍTULOS */
-/* ===================== */
-.game-header {
-  background: linear-gradient(135deg, #004aad, #0066cc);
-  color: white;
-  text-align: center;
-  padding: 20px;
-}
+/* Title */
+.main-header{text-align:center;margin-bottom:14px}
+.game-title{font-size:28px;color:#eaf3ff;margin:6px 0;text-shadow:0 6px 30px rgba(15,82,186,0.18)}
+.credits{font-size:12px;color:var(--muted);margin-top:2px}
 
-.game-title {
-  margin: 0;
-  font-size: 2.2rem;
-  font-weight: 800;
-  letter-spacing: 2px;
-}
+/* Card */
+.screen{display:none}
+.screen.active{display:block}
+.card{background:var(--card);border-radius:16px;padding:18px;margin-bottom:14px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.06);box-shadow:0 8px 30px rgba(0,0,0,0.45)}
+.muted{color:var(--muted)}
+.row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 
-.students {
-  font-size: 0.8rem;
-  opacity: 0.9;
-}
+/* Inputs and hints */
+input{width:100%;padding:12px;border-radius:12px;border:none;background:rgba(255,255,255,0.06);color:#fff;font-size:15px}
+.hint{font-size:13px;color:var(--muted);margin-top:8px;text-align:center}
+button.btn{border:none;padding:12px 14px;border-radius:12px;font-weight:700;cursor:pointer;transition:transform .18s,box-shadow .18s}
+button.btn:active{transform:translateY(1px)}
 
-/* ===================== */
-/* TELAS */
-/* ===================== */
-.screen {
-  padding: 20px;
-  text-align: center;
-  display: none;
-}
+.btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 8px 30px rgba(15,82,186,0.18)}
+.btn.outline{background:transparent;border:1px solid rgba(255,255,255,0.08);color:#eaf3ff}
 
-.screen.active {
-  display: block;
-}
+/* Players list */
+.players ul{list-style:none;padding:0;margin:8px 0 0 0}
+.players li{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;color:#eaf3ff;margin-bottom:8px;display:flex;justify-content:space-between}
 
-input {
-  width: 80%;
-  padding: 10px;
-  border-radius: 10px;
-  border: 2px solid #004aad;
-  margin-bottom: 15px;
-  font-size: 1rem;
-}
+/* Game header */
+.game-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:#eaf3ff}
+#timer{font-weight:800}
 
-/* ===================== */
-/* BOTÕES */
-/* ===================== */
-button {
-  background: linear-gradient(135deg, #0074d9, #004aad);
-  color: white;
-  border: none;
-  padding: 12px 25px;
-  font-size: 1rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+/* Question card styled white */
+.question-card{background:var(--question-bg);color:var(--question-text);padding:18px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,0.12)}
+.question{font-size:18px;font-weight:800;margin-bottom:14px;line-height:1.25}
 
-button:hover {
-  transform: scale(1.05);
-  background: linear-gradient(135deg, #004aad, #002f6c);
-}
+/* Options grid (two columns on bigger) */
+.options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.options-grid button{background:#f3f7ff;border-radius:10px;padding:12px;border:1px solid rgba(10,24,48,0.06);font-weight:700;cursor:pointer;text-align:left}
+.options-grid button:hover{transform:scale(1.02);border-color:var(--accent);box-shadow:0 8px 20px rgba(15,82,186,0.06)}
+.options-grid button.correct{background:var(--good);color:#06220f}
+.options-grid button.wrong{background:var(--bad);color:#fff}
+.options-grid button[disabled]{opacity:0.7;cursor:not-allowed}
 
-/* ===================== */
-/* QUIZ */
-/* ===================== */
-.quiz-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin-bottom: 15px;
-}
+/* Round status */
+#roundStatus{margin-top:10px;color:#334155}
 
-#question-text {
-  font-size: 1.2rem;
-  color: #000;
-  background: #e9f1ff;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 20px;
-  line-height: 1.5;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-}
+/* Podium */
+.podium{display:flex;gap:8px;justify-content:center;margin:12px 0}
+.podium .place{padding:12px;border-radius:10px;background:#fff;color:var(--question-text);min-width:100px;text-align:center;font-weight:700}
+.podium .first{background:linear-gradient(90deg,#ffd700,#ffeb9f);transform:scale(1.05)}
 
-/* Opções */
-#options {
-  display: grid;
-  gap: 12px;
-}
+/* Final ranking */
+#finalRanking p{background:#fff;padding:10px;border-radius:8px;color:var(--question-text);margin:8px 0}
 
-.option {
-  background: #ffffff;
-  border: 2px solid #004aad;
-  border-radius: 10px;
-  padding: 12px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.option:hover {
-  background: #004aad;
-  color: white;
-  transform: scale(1.03);
-}
-
-/* Timer */
-#timer {
-  font-size: 1.2rem;
-  color: #ff4444;
-  font-weight: 700;
-}
-
-/* ===================== */
-/* RESULTADO FINAL */
-/* ===================== */
-#result h2 {
-  font-size: 1.8rem;
-  color: #004aad;
-}
-
-#final-score, #accuracy {
-  font-size: 1.1rem;
-  margin: 10px 0;
-  color: #000;
-}
-
-/* ===================== */
-/* RESPONSIVIDADE */
-/* ===================== */
-@media (max-width: 480px) {
-  .game-title { font-size: 1.8rem; }
-  button { width: 80%; }
-  #question-text { font-size: 1rem; }
+/* responsiveness */
+@media(max-width:420px){
+  .options-grid{grid-template-columns:1fr}
+  .question{font-size:16px}
+  .game-title{font-size:24px}
 }
