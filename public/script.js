@@ -1,208 +1,222 @@
-// ==========================
-// CONFIGURAÇÕES INICIAIS
-// ==========================
-const screens = {
-  lobby: document.getElementById("lobby"),
-  game: document.getElementById("game"),
-  result: document.getElementById("result"),
-};
-const nicknameInput = document.getElementById("nickname");
-const createBtn = document.getElementById("createRoomBtn");
-const joinBtn = document.getElementById("joinRoomBtn");
-const startBtn = document.getElementById("startGameBtn");
-const backBtn = document.getElementById("backToLobbyBtn");
+// public/script.js
+(() => {
+  const socket = io();
 
-const questionText = document.getElementById("questionText");
-const optionsContainer = document.getElementById("options");
-const timerDisplay = document.getElementById("timer");
-const roundLabel = document.getElementById("roundLabel");
-const podiumDiv = document.getElementById("podium");
-const finalRanking = document.getElementById("finalRanking");
+  // screens
+  const lobby = document.getElementById('lobby');
+  const room = document.getElementById('room');
+  const game = document.getElementById('game');
+  const results = document.getElementById('results');
 
-let currentQuestion = 0;
-let score = 0;
-let timer;
-let timeLeft = 10; // ⏱️ 10 segundos por rodada
+  // lobby elems
+  const nicknameInput = document.getElementById('nickname');
+  const roomCodeInput = document.getElementById('roomCode');
+  const createRoomBtn = document.getElementById('createRoomBtn');
+  const joinRoomBtn = document.getElementById('joinRoomBtn');
+  const playerList = document.getElementById('playerList');
+  const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+  const startGameBtn = document.getElementById('startGameBtn');
 
-// ==========================
-// PERGUNTAS DO JOGO
-// ==========================
-const questions = [
-  {
-    question: "Qual é o principal objetivo de um texto narrativo?",
-    options: [
-      "Explicar um conceito científico",
-      "Convencer o leitor a adotar uma ideia",
-      "Contar uma história com início, meio e fim",
-      "Descrever uma paisagem detalhadamente"
-    ],
-    correct: 2
-  },
-  {
-    question: "O que é um narrador onisciente?",
-    options: [
-      "Aquele que participa da história",
-      "Aquele que sabe tudo sobre os personagens e acontecimentos",
-      "Aquele que apenas observa sem entender os fatos",
-      "Aquele que narra em primeira pessoa"
-    ],
-    correct: 1
-  },
-  {
-    question: "Qual desses é um exemplo de discurso direto?",
-    options: [
-      "Ele disse que iria à escola.",
-      "Ele disse: 'Vou à escola!'",
-      "Disse que ele ia à escola.",
-      "A ida à escola foi comentada por ele."
-    ],
-    correct: 1
-  },
-  {
-    question: "Em uma narrativa, o enredo é:",
-    options: [
-      "O conjunto de ações e acontecimentos da história",
-      "A descrição física dos personagens",
-      "O local onde se passa a história",
-      "O ponto de vista do narrador"
-    ],
-    correct: 0
-  },
-  {
-    question: "O tempo da narrativa pode ser:",
-    options: [
-      "Apenas cronológico",
-      "Apenas psicológico",
-      "Cronológico ou psicológico",
-      "Indefinido, sempre o mesmo"
-    ],
-    correct: 2
-  },
-  {
-    question: "Qual elemento representa o espaço narrativo?",
-    options: [
-      "O tempo dos acontecimentos",
-      "O local onde os fatos ocorrem",
-      "O conflito principal da história",
-      "A fala dos personagens"
-    ],
-    correct: 1
-  },
-  {
-    question: "O clímax da narrativa é o momento em que:",
-    options: [
-      "A história começa",
-      "A tensão atinge o ponto máximo",
-      "Os personagens são apresentados",
-      "O desfecho acontece"
-    ],
-    correct: 1
-  },
-  {
-    question: "Qual o papel do narrador-personagem?",
-    options: [
-      "Contar a história de fora dos acontecimentos",
-      "Relatar fatos em que ele próprio participa",
-      "Narrar os pensamentos dos outros personagens",
-      "Descrever apenas o cenário"
-    ],
-    correct: 1
-  },
-  {
-    question: "O que é um conflito na narrativa?",
-    options: [
-      "Uma conversa entre personagens",
-      "Um problema ou desafio enfrentado pelos personagens",
-      "Um espaço geográfico da história",
-      "Um diálogo entre narrador e leitor"
-    ],
-    correct: 1
-  },
-  {
-    question: "Qual destes é um exemplo de tempo psicológico?",
-    options: [
-      "Ontem, às 18h, João chegou em casa.",
-      "João lembrava do passado como se fosse agora.",
-      "Em 2020, a escola foi reformada.",
-      "Durante o verão, viajaram ao litoral."
-    ],
-    correct: 1
+  // game elems
+  const questionText = document.getElementById('questionText');
+  const optionsContainer = document.getElementById('options');
+  const roundLabel = document.getElementById('roundLabel');
+  const timerLabel = document.getElementById('timer');
+  const roundStatus = document.getElementById('roundStatus');
+
+  // results elems
+  const podium = document.getElementById('podium');
+  const finalRanking = document.getElementById('finalRanking');
+  const backToLobbyBtn = document.getElementById('backToLobbyBtn');
+
+  let myName = '';
+  let currentRoom = '';
+  let currentRound = 0;
+  let localTimer = null;
+  let acceptingAnswers = false;
+
+  // helper: show a screen
+  function showScreen(id) {
+    [lobby, room, game, results].forEach(s => s.classList.remove('active'));
+    if (id === 'lobby') lobby.classList.add('active');
+    if (id === 'room') room.classList.add('active');
+    if (id === 'game') game.classList.add('active');
+    if (id === 'results') results.classList.add('active');
   }
-];
 
-// ==========================
-// FUNÇÕES PRINCIPAIS
-// ==========================
+  // update players list UI
+  function renderPlayers(list) {
+    playerList.innerHTML = '';
+    list.forEach(p => {
+      const li = document.createElement('li');
+      li.innerText = `${p.name} — ${p.score || 0} pts`;
+      playerList.appendChild(li);
+    });
+  }
 
-function startGame() {
-  score = 0;
-  currentQuestion = 0;
-  showScreen("game");
-  loadQuestion();
-}
-
-function showScreen(screen) {
-  Object.values(screens).forEach(s => s.classList.remove("active"));
-  screens[screen].classList.add("active");
-}
-
-function loadQuestion() {
-  const q = questions[currentQuestion];
-  if (!q) return endGame();
-
-  roundLabel.textContent = `Pergunta ${currentQuestion + 1} de ${questions.length}`;
-  questionText.textContent = q.question;
-  optionsContainer.innerHTML = "";
-
-  q.options.forEach((opt, index) => {
-    const btn = document.createElement("button");
-    btn.textContent = opt;
-    btn.classList.add("option");
-    btn.onclick = () => checkAnswer(index);
-    optionsContainer.appendChild(btn);
+  // create / join events
+  createRoomBtn.addEventListener('click', () => {
+    myName = nicknameInput.value.trim();
+    if (!myName) return alert('Digite seu nome!');
+    socket.emit('createRoom', myName);
   });
 
-  resetTimer();
-}
+  joinRoomBtn.addEventListener('click', () => {
+    myName = nicknameInput.value.trim();
+    const code = roomCodeInput.value.trim().toUpperCase();
+    if (!myName || !code) return alert('Preencha seu nome e o código da sala!');
+    socket.emit('joinRoom', { roomCode: code, playerName: myName });
+  });
 
-function resetTimer() {
-  clearInterval(timer);
-  timeLeft = 10;
-  timerDisplay.textContent = `${timeLeft}s`;
-  timer = setInterval(() => {
-    timeLeft--;
-    timerDisplay.textContent = `${timeLeft}s`;
-    if (timeLeft <= 0) {
-      clearInterval(timer);
-      nextQuestion();
+  startGameBtn.addEventListener('click', () => {
+    if (!currentRoom) return;
+    socket.emit('startGame', currentRoom);
+  });
+
+  backToLobbyBtn.addEventListener('click', () => {
+    // refresh UI local state
+    currentRoom = '';
+    myName = '';
+    nicknameInput.value = '';
+    roomCodeInput.value = '';
+    showScreen('lobby');
+  });
+
+  // socket listeners
+  socket.on('roomCreated', (code) => {
+    currentRoom = code;
+    roomCodeDisplay.textContent = code;
+    showScreen('room');
+  });
+
+  socket.on('roomJoined', ({ roomCode, players }) => {
+    currentRoom = roomCode;
+    roomCodeDisplay.textContent = roomCode;
+    renderPlayers(players);
+    showScreen('room');
+  });
+
+  socket.on('roomError', (msg) => {
+    alert(msg);
+  });
+
+  socket.on('updatePlayers', (players) => {
+    renderPlayers(players);
+  });
+
+  // preStart: show countdown on all clients
+  socket.on('preStart', ({ seconds }) => {
+    // show countdown in question place then game screen
+    showScreen('game');
+    questionText.innerText = `O jogo começa em ${seconds}...`;
+    optionsContainer.innerHTML = '';
+    roundStatus.innerText = '';
+    timerLabel.innerText = `${seconds}s`;
+    let s = seconds;
+    clearInterval(localTimer);
+    localTimer = setInterval(() => {
+      s--;
+      timerLabel.innerText = `${s}s`;
+      questionText.innerText = s > 0 ? `O jogo começa em ${s}...` : 'Preparando...';
+      if (s <= 0) clearInterval(localTimer);
+    }, 1000);
+  });
+
+  // when server sends a question
+  socket.on('question', (data) => {
+    // data: { question, options[], correctIndex, time }
+    currentRound += 1;
+    showScreen('game');
+    roundLabel.innerText = `Rodada ${currentRound}`;
+    questionText.innerText = data.question;
+    optionsContainer.innerHTML = '';
+    roundStatus.innerText = '';
+    acceptingAnswers = true;
+
+    // render options
+    data.options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.innerText = opt;
+      btn.style.width = '100%';
+      btn.style.padding = '12px';
+      btn.style.borderRadius = '10px';
+      btn.style.border = '1px solid rgba(0,0,0,0.06)';
+      btn.style.background = '#f5f8ff';
+      btn.style.fontWeight = '700';
+      btn.addEventListener('click', () => {
+        if (!acceptingAnswers) return;
+        acceptingAnswers = false;
+        // disable UI
+        Array.from(optionsContainer.children).forEach(c => c.disabled = true);
+        // send answer (by index) to server
+        socket.emit('answer', { roomCode: currentRoom, playerName: myName, answerIndex: i });
+        roundStatus.innerText = 'Resposta enviada! Aguarde o final do tempo.';
+      });
+      optionsContainer.appendChild(btn);
+    });
+
+    // start local timer
+    let t = data.time || 15;
+    timerLabel.innerText = `${t}s`;
+    clearInterval(localTimer);
+    localTimer = setInterval(() => {
+      t--;
+      timerLabel.innerText = `${t}s`;
+      if (t <= 0) {
+        clearInterval(localTimer);
+        acceptingAnswers = false;
+      }
+    }, 1000);
+  });
+
+  // reveal correct answer (server signals)
+  socket.on('reveal', ({ correctIndex }) => {
+    // colorize buttons
+    const buttons = Array.from(optionsContainer.children);
+    buttons.forEach((btn, i) => {
+      btn.disabled = true;
+      if (i === correctIndex) {
+        btn.classList.add('correct');
+      } else {
+        // only mark wrong if the player clicked it (it is disabled)
+        if (btn.classList.contains('clicked')) btn.classList.add('wrong');
+      }
+    });
+    roundStatus.innerText = 'Resposta correta mostrada';
+  });
+
+  // when final ranking is sent
+  socket.on('showResults', (ranking) => {
+    showScreen('results');
+    // podium
+    podium.innerHTML = '';
+    finalRanking.innerHTML = '';
+    if (ranking.length > 0) {
+      const first = ranking[0];
+      const second = ranking[1];
+      const third = ranking[2];
+      const p1 = `<div class="place first">🥇 ${first ? first.name : '—'}<br>${first ? first.score + ' pts' : ''}</div>`;
+      const p2 = `<div class="place">${second ? '🥈 ' + second.name + '<br>' + second.score + ' pts' : ''}</div>`;
+      const p3 = `<div class="place">${third ? '🥉 ' + third.name + '<br>' + third.score + ' pts' : ''}</div>`;
+      podium.innerHTML = p2 + p1 + p3;
     }
-  }, 1000);
-}
+    // full ranking top N
+    ranking.forEach((p, i) => {
+      const el = document.createElement('p');
+      el.innerText = `${i + 1}º — ${p.name} — ${p.score} pts`;
+      finalRanking.appendChild(el);
+    });
+  });
 
-function checkAnswer(index) {
-  const correct = questions[currentQuestion].correct;
-  if (index === correct) {
-    score += 10;
-  }
-  nextQuestion();
-}
+  // initial screen
+  showScreen('lobby');
 
-function nextQuestion() {
-  clearInterval(timer);
-  currentQuestion++;
-  setTimeout(loadQuestion, 300);
-}
-
-function endGame() {
-  showScreen("result");
-  const total = questions.length * 10;
-  const percent = Math.round((score / total) * 100);
-  document.getElementById("final-score").textContent = `Pontuação: ${score}/${total}`;
-  document.getElementById("accuracy").textContent = `Aproveitamento: ${percent}%`;
-}
-
-// ==========================
-// EVENTOS
-// ==========================
-document.getElementById("startGameBtn").onclick = startGame;
-document.getElementById("backToLobbyBtn").onclick = () => showScreen("lobby");
+  // small UX: pressing Enter in name creates/join logic (optional)
+  nicknameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (roomCodeInput.value.trim()) joinRoomBtn.click();
+      else createRoomBtn.click();
+    }
+  });
+})();
