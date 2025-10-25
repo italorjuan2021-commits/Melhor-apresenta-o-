@@ -157,7 +157,7 @@
     });
 
     // start local timer
-    let t = data.time || 15;
+    let t = data.time || 10;
     timerLabel.innerText = `${t}s`;
     clearInterval(localTimer);
     localTimer = setInterval(() => {
