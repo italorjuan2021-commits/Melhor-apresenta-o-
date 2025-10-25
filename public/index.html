@@ -1,50 +1,78 @@
-
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A NARRAÇÃO - Quiz Interativo</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>A NARRAÇÃO - Quiz Multiplayer</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <div id="game-container">
-    <!-- Título principal -->
-    <header class="game-header">
-      <h1 class="game-title">A NARRAÇÃO</h1>
-      <p class="students">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
+  <div id="app">
+    <header class="main-header">
+      <h1 class="game-title">🎬 A NARRAÇÃO</h1>
+      <p class="credits">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
     </header>
 
-    <!-- Lobby -->
-    <div id="lobby" class="screen active">
-      <h2>Bem-vindo ao Quiz!</h2>
-      <p>Entre com seu nome e junte-se à sala:</p>
-      <input type="text" id="playerName" placeholder="Digite seu nome">
-      <button id="joinBtn">Entrar na Sala</button>
-
-      <div id="playersList"></div>
-      <button id="startBtn" class="hidden">Iniciar Jogo</button>
-    </div>
-
-    <!-- Jogo -->
-    <div id="quiz" class="screen hidden">
-      <div class="quiz-header">
-        <div id="timer">⏱️ 10</div>
-        <div id="question-number"></div>
+    <!-- LOBBY -->
+    <section id="lobby" class="screen active">
+      <div class="card">
+        <h2>Crie ou entre em uma sala</h2>
+        <p class="muted">Junte seus colegas e competam — cada pergunta vale 10 pontos.</p>
+        <input id="nickname" placeholder="Seu nome" type="text" />
+        <div style="height:10px"></div>
+        <input id="roomCode" placeholder="Código da sala (deixe vazio para criar)" type="text" />
+        <div style="height:14px"></div>
+        <div class="row">
+          <button id="createRoomBtn" class="btn primary">Criar Sala</button>
+          <button id="joinRoomBtn" class="btn outline">Entrar</button>
+        </div>
+        <p class="hint">Ao criar, um código será gerado — compartilhe com os colegas.</p>
       </div>
-      <div id="question-text"></div>
-      <div id="options"></div>
-    </div>
+    </section>
 
-    <!-- Resultado -->
-    <div id="result" class="screen hidden">
-      <h2>🎉 Resultado Final 🎉</h2>
-      <p id="final-score"></p>
-      <p id="accuracy"></p>
-      <button id="restartBtn">Jogar Novamente</button>
-    </div>
+    <!-- ROOM -->
+    <section id="room" class="screen">
+      <div class="card">
+        <div class="top">
+          <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
+        </div>
+        <div class="players">
+          <h3>Jogadores</h3>
+          <ul id="playerList"></ul>
+        </div>
+        <div style="height:12px"></div>
+        <button id="startGameBtn" class="btn primary">Iniciar jogo (5s)</button>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="game" class="screen">
+      <div class="card">
+        <div class="game-header">
+          <div id="roundLabel">Rodada 1</div>
+          <div id="timer">15s</div>
+        </div>
+        <div class="question-card">
+          <div id="questionText" class="question">Carregando pergunta...</div>
+          <div id="options" class="options-grid"></div>
+          <div id="roundStatus" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULTS -->
+    <section id="results" class="screen">
+      <div class="card">
+        <h2>🏆 Resultado Final</h2>
+        <div id="podium" class="podium"></div>
+        <div id="finalRanking"></div>
+        <div style="height:12px"></div>
+        <button id="backToLobbyBtn" class="btn primary">Voltar ao Início</button>
+      </div>
+    </section>
   </div>
 
+  <!-- Socket.IO e script -->
+  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
