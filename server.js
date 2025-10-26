@@ -1,32 +1,47 @@
 // ===============================
-// 🔊 Sons embutidos em Base64
-// ===============================
-const soundCorrect = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); // som de acerto
-const soundWrong   = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); // som de erro
-const soundVictory = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAAA..."); // som vitória
+// 📦 Perguntas (mesmo que você já tem)
+const questions = [
+  { question: "O que é uma narração?", options: ["Um texto que conta uma história com personagens e tempo", "Um texto que descreve objetos ou lugares", "Um texto que defende uma opinião", "Um texto que explica um conceito"], answer: 0 },
+  { question: "Qual é o principal elemento da narração?", options: ["O narrador", "O autor", "O título", "O tema"], answer: 0 },
+  { question: "O que é o enredo?", options: ["A sequência de ações e acontecimentos da história", "O espaço onde ocorre a história", "O conflito dos personagens", "A fala dos personagens"], answer: 0 },
+  { question: "Quem conta a história em um texto narrativo?", options: ["O narrador", "O protagonista", "O autor", "O leitor"], answer: 0 },
+  { question: "Qual desses é um tipo de narrador?", options: ["Narrador-personagem", "Narrador-ilustrador", "Narrador-público", "Narrador-anônimo"], answer: 0 },
+  { question: "O que é o clímax na narrativa?", options: ["O momento de maior tensão da história", "O início da história", "A conclusão da história", "A descrição do espaço"], answer: 0 },
+  { question: "O que representa o desfecho?", options: ["A parte final onde o conflito é resolvido", "O começo da história", "O conflito central", "A fala dos personagens"], answer: 0 },
+  { question: "Qual é a função do tempo na narração?", options: ["Situar os acontecimentos", "Descrever personagens", "Defender uma tese", "Apresentar um argumento"], answer: 0 },
+  { question: "O espaço narrativo representa:", options: ["O lugar onde a história se passa", "O tempo dos acontecimentos", "O ponto de vista do narrador", "O tema principal"], answer: 0 },
+  { question: "Quem é o protagonista?", options: ["O personagem principal da história", "O narrador observador", "O antagonista", "O autor do texto"], answer: 0 }
+];
 
 // ===============================
 // ⚙️ Variáveis globais
 // ===============================
-let currentQuestion = 0;
-let score = 0;
-let answered = false;
-let timer;
-let timeLeft = 8;
 let playerName = "";
 let roomCode = "";
+let socket;
+let timeLeft = 8;
 
 // ===============================
-// 🔗 Conexão Socket.IO
+// 🔊 Sons
 // ===============================
-const socket = io();
+function playCorrectSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = "sine"; o.frequency.value = 880;
+  g.gain.value = 0.1;
+  o.start(); o.stop(ctx.currentTime + 0.2);
+}
 
-// ===============================
-// 🔄 Funções utilitárias
-// ===============================
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+function playWrongSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.type = "sawtooth"; o.frequency.value = 200;
+  g.gain.value = 0.1;
+  o.start(); o.stop(ctx.currentTime + 0.3);
 }
 
 // ===============================
@@ -35,27 +50,19 @@ function showScreen(id) {
 document.getElementById("createRoomBtn").addEventListener("click", () => {
   playerName = document.getElementById("nickname").value.trim();
   if (!playerName) return alert("Digite seu nome!");
-  socket.emit('createRoom', playerName);
+  initSocket();
+  socket.emit("createRoom", playerName);
 });
 
 document.getElementById("joinRoomBtn").addEventListener("click", () => {
   playerName = document.getElementById("nickname").value.trim();
   roomCode = document.getElementById("roomCode").value.trim().toUpperCase();
   if (!playerName || !roomCode) return alert("Preencha nome e código da sala!");
-  socket.emit('joinRoom', { roomCode, playerName });
+  initSocket();
+  socket.emit("joinRoom", { roomCode, playerName });
 });
 
-document.getElementById("startGameBtn").addEventListener("click", () => {
-  if (!roomCode) return alert("Erro: Sala não definida");
-  socket.emit('startGame', roomCode);
-});
-
-document.getElementById("backToLobbyBtn").addEventListener("click", () => showScreen("lobby"));
-
-// ===============================
-// 👥 Atualização de jogadores
-// ===============================
-function updatePlayerListSocket(players) {
+function updatePlayerList(players) {
   const list = document.getElementById("playerList");
   list.innerHTML = "";
   players.forEach(p => {
@@ -66,120 +73,133 @@ function updatePlayerListSocket(players) {
 }
 
 // ===============================
-// 🔗 Eventos Socket.IO
+// ▶️ Botão iniciar jogo
 // ===============================
-
-// sala criada
-socket.on('roomCreated', (code) => {
-  roomCode = code;
-  document.getElementById("roomCodeDisplay").textContent = roomCode;
-  showScreen("room");
-});
-
-// entrou em sala
-socket.on('roomJoined', ({ roomCode: code, players }) => {
-  roomCode = code;
-  document.getElementById("roomCodeDisplay").textContent = roomCode;
-  updatePlayerListSocket(players);
-  showScreen("room");
-});
-
-// erro
-socket.on('roomError', msg => alert(msg));
-
-// lista de jogadores atualizada
-socket.on('updatePlayers', players => updatePlayerListSocket(players));
-
-// contagem regressiva antes do jogo
-socket.on('preStart', ({ seconds }) => {
-  alert(`Jogo vai começar em ${seconds}s!`);
+document.getElementById("startGameBtn").addEventListener("click", () => {
+  socket.emit("startGame", roomCode);
 });
 
 // ===============================
-// ❓ Perguntas
+// 🔌 Conexão Socket.IO
 // ===============================
-socket.on('question', (data) => {
-  answered = false;
-  showScreen("game");
-  showQuestionFromServer(data);
-});
+function initSocket() {
+  if (socket) return;
+  socket = io();
 
-function showQuestionFromServer(qData) {
+  // Receber código ao criar
+  socket.on("roomCreated", code => {
+    roomCode = code;
+    document.getElementById("roomCodeDisplay").textContent = code;
+    showScreen("room");
+  });
+
+  // Receber dados da sala ao entrar
+  socket.on("roomJoined", data => {
+    roomCode = data.roomCode;
+    showScreen("room");
+    updatePlayerList(data.players);
+    document.getElementById("roomCodeDisplay").textContent = roomCode;
+  });
+
+  // Atualizar lista de jogadores
+  socket.on("updatePlayers", players => {
+    updatePlayerList(players);
+  });
+
+  // Pré-start
+  socket.on("preStart", data => {
+    document.getElementById("timer").textContent = `${data.seconds}s`;
+  });
+
+  // Receber pergunta
+  socket.on("question", data => {
+    showScreen("game");
+    displayQuestion(data);
+    startTimer(data.time);
+  });
+
+  // Revelar resposta
+  socket.on("reveal", data => {
+    revealAnswer(data.correctIndex);
+  });
+
+  // Resultado final
+  socket.on("showResults", ranking => {
+    showScreen("results");
+    const podiumDiv = document.getElementById("podium");
+    podiumDiv.innerHTML = "";
+    const podiumColors = ["#ffd700", "#c0c0c0", "#cd7f32"];
+    ranking.slice(0, 3).forEach((p, i) => {
+      const place = document.createElement("div");
+      place.classList.add("place");
+      if (i === 0) place.classList.add("first");
+      place.style.background = podiumColors[i] || "#fff";
+      place.style.animation = `bounceIn 0.6s ease ${i*300}ms both`;
+      place.innerHTML = `<div style="font-size:18px;">${i+1}º</div><div>${p.name}</div><div>${p.score} pts</div>`;
+      podiumDiv.appendChild(place);
+    });
+    const finalRanking = document.getElementById("finalRanking");
+    finalRanking.innerHTML = ranking.map((p,i)=>`<p>${i+1}º — ${p.name}: ${p.correctCount} acertos</p>`).join("");
+  });
+}
+
+// ===============================
+// ❓ Exibir pergunta
+// ===============================
+function displayQuestion(data) {
+  document.getElementById("roundLabel").textContent = `Pergunta ${data.index + 1}`;
+  document.getElementById("questionText").textContent = data.question;
   const optionsDiv = document.getElementById("options");
-  document.getElementById("questionText").textContent = qData.question;
   optionsDiv.innerHTML = "";
 
-  qData.options.forEach((opt, index) => {
+  data.options.forEach((opt, i) => {
     const btn = document.createElement("button");
     btn.textContent = opt;
     btn.className = "option-btn";
-    btn.addEventListener("click", () => selectOptionServer(index, btn));
+    btn.addEventListener("click", () => {
+      socket.emit("answer", { roomCode, playerName, answerIndex: i });
+    });
     optionsDiv.appendChild(btn);
   });
+}
 
-  // timer
-  timeLeft = qData.time;
+// ===============================
+// ⏱️ Temporizador sincronizado
+// ===============================
+let timerInterval;
+function startTimer(seconds) {
+  clearInterval(timerInterval);
+  timeLeft = seconds;
   document.getElementById("timer").textContent = `${timeLeft}s`;
-  clearInterval(timer);
-  timer = setInterval(() => {
+  timerInterval = setInterval(() => {
     timeLeft--;
     document.getElementById("timer").textContent = `${timeLeft}s`;
-    if (timeLeft <= 0) clearInterval(timer);
+    if (timeLeft <= 0) clearInterval(timerInterval);
   }, 1000);
 }
 
-function selectOptionServer(answerIndex, button) {
-  if (answered) return;
-  answered = true;
-  button.classList.add("selected");
-  socket.emit('answer', { roomCode, playerName, answerIndex });
+// ===============================
+// 🎯 Revelar resposta
+// ===============================
+function revealAnswer(correctIndex) {
+  clearInterval(timerInterval);
+  const buttons = document.querySelectorAll(".option-btn");
+  buttons.forEach((btn,i) => {
+    btn.disabled = true;
+    if(i===correctIndex) btn.classList.add("correct");
+    else if(btn.classList.contains("selected")) btn.classList.add("wrong");
+    else btn.style.opacity="0.6";
+  });
 }
 
-// revelar resposta
-socket.on('reveal', ({ correctIndex }) => {
-  const buttons = document.querySelectorAll(".option-btn");
-  buttons.forEach((btn, i) => {
-    btn.disabled = true;
-    if (i === correctIndex) btn.classList.add("correct");
-    else if (btn.classList.contains("selected")) btn.classList.add("wrong");
-    else btn.style.opacity = "0.6";
-  });
-  // tocar som
-  buttons.forEach((btn,i)=>{
-    if(btn.classList.contains("correct") && btn.classList.contains("selected")) soundCorrect.play();
-    else if(btn.classList.contains("wrong")) soundWrong.play();
-  });
-  navigator.vibrate?.([100,50,100]);
-});
-
-// mostrar resultados
-socket.on('showResults', (ranking) => {
-  showScreen("results");
-  soundVictory.play();
-  navigator.vibrate?.([200,100,200]);
-
-  const finalRanking = document.getElementById("finalRanking");
-  finalRanking.innerHTML = ranking.map((p,i) => `<p>${i+1}º — ${p.name}: ${p.correctCount} acertos</p>`).join("");
-
-  // pódio animado
-  const podiumDiv = document.getElementById("podium");
-  podiumDiv.innerHTML = "";
-  const podiumColors = ["#ffd700","#c0c0c0","#cd7f32"];
-  const podiumDelays = [0,300,600];
-  ranking.slice(0,3).forEach((p,i)=>{
-    const place = document.createElement("div");
-    place.classList.add("place");
-    if(i===0) place.classList.add("first");
-    place.style.background = podiumColors[i] || "#fff";
-    place.style.animation = `bounceIn 0.6s ease ${podiumDelays[i]}ms both`;
-    place.innerHTML = `<div style="font-size:18px;">${i+1}º</div><div>${p.name}</div><div>${p.correctCount} pts</div>`;
-    podiumDiv.appendChild(place);
-  });
+// ===============================
+// 🔁 Voltar ao lobby
+document.getElementById("backToLobbyBtn").addEventListener("click", () => {
+  showScreen("lobby");
 });
 
 // ===============================
 // 💃 Animações extras
-// ===============================
 const style = document.createElement("style");
 style.textContent = `
 @keyframes bounceIn {
