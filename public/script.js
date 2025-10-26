@@ -1,272 +1,289 @@
-// public/script.js
-(() => {
-  const socket = io();
+// script.js — versão aprimorada 🔥
 
-  // screens
-  const $lobby = document.getElementById('lobby');
-  const $room = document.getElementById('room');
-  const $game = document.getElementById('game');
-  const $results = document.getElementById('results');
+// ===============================
+// 🎵 Sons
+// ===============================
+const soundCorrect = new Audio("sounds/correct.mp3");
+const soundWrong = new Audio("sounds/wrong.mp3");
 
-  // lobby elems
-  const $nickname = document.getElementById('nickname');
-  const $roomCodeInput = document.getElementById('roomCode');
-  const $createRoomBtn = document.getElementById('createRoomBtn');
-  const $joinRoomBtn = document.getElementById('joinRoomBtn');
-
-  // room elems
-  const $roomCodeDisplay = document.getElementById('roomCodeDisplay');
-  const $playerList = document.getElementById('playerList');
-  const $startGameBtn = document.getElementById('startGameBtn');
-  const $leaveBtn = document.getElementById('leaveBtn');
-
-  // game elems
-  const $roundLabel = document.getElementById('roundLabel');
-  const $timerText = document.getElementById('timer');
-  const $timerFill = document.getElementById('timerFill');
-  const $questionText = document.getElementById('questionText');
-  const $options = document.getElementById('options');
-  const $roundStatus = document.getElementById('roundStatus');
-
-  // results elems
-  const $podium = document.getElementById('podium');
-  const $finalRanking = document.getElementById('finalRanking');
-  const $backToLobbyBtn = document.getElementById('backToLobbyBtn');
-
-  // local state
-  let myName = '';
-  let currentRoom = '';
-  let localAnswered = false;
-  let localTimer = null;
-  let localTimeLeft = 8;
-  let lastQuestionMeta = null; // { optionsSent, correctShuffled, time }
-
-  // WebAudio (generated sounds)
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  const audioCtx = new AudioCtx();
-  function playBeep(freq, duration = 0.12, type = 'sine', volume = 0.06) {
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.type = type;
-    o.frequency.value = freq;
-    g.gain.value = volume;
-    o.connect(g);
-    g.connect(audioCtx.destination);
-    o.start();
-    setTimeout(() => o.stop(), duration * 1000);
+// ===============================
+// 📦 Dados das perguntas
+// ===============================
+const questions = [
+  {
+    question: "O que é uma narração?",
+    options: [
+      "Um texto que conta uma história com personagens e tempo",
+      "Um texto que descreve objetos ou lugares",
+      "Um texto que defende uma opinião",
+      "Um texto que explica um conceito"
+    ],
+    answer: 0
+  },
+  {
+    question: "Qual é o principal elemento da narração?",
+    options: ["O narrador", "O autor", "O título", "O tema"],
+    answer: 0
+  },
+  {
+    question: "O que é o enredo?",
+    options: [
+      "A sequência de ações e acontecimentos da história",
+      "O espaço onde ocorre a história",
+      "O conflito dos personagens",
+      "A fala dos personagens"
+    ],
+    answer: 0
+  },
+  {
+    question: "Quem conta a história em um texto narrativo?",
+    options: ["O narrador", "O protagonista", "O autor", "O leitor"],
+    answer: 0
+  },
+  {
+    question: "Qual desses é um tipo de narrador?",
+    options: [
+      "Narrador-personagem",
+      "Narrador-ilustrador",
+      "Narrador-público",
+      "Narrador-anônimo"
+    ],
+    answer: 0
+  },
+  {
+    question: "O que é o clímax na narrativa?",
+    options: [
+      "O momento de maior tensão da história",
+      "O início da história",
+      "A conclusão da história",
+      "A descrição do espaço"
+    ],
+    answer: 0
+  },
+  {
+    question: "O que representa o desfecho?",
+    options: [
+      "A parte final onde o conflito é resolvido",
+      "O começo da história",
+      "O conflito central",
+      "A fala dos personagens"
+    ],
+    answer: 0
+  },
+  {
+    question: "Qual é a função do tempo na narração?",
+    options: [
+      "Situar os acontecimentos",
+      "Descrever personagens",
+      "Defender uma tese",
+      "Apresentar um argumento"
+    ],
+    answer: 0
+  },
+  {
+    question: "O espaço narrativo representa:",
+    options: [
+      "O lugar onde a história se passa",
+      "O tempo dos acontecimentos",
+      "O ponto de vista do narrador",
+      "O tema principal"
+    ],
+    answer: 0
+  },
+  {
+    question: "Quem é o protagonista?",
+    options: [
+      "O personagem principal da história",
+      "O narrador observador",
+      "O antagonista",
+      "O autor do texto"
+    ],
+    answer: 0
   }
-  function soundClick(){ playBeep(1000,0.06,'square',0.03); }
-  function soundCorrect(){ playBeep(880,0.12,'sine',0.12); setTimeout(()=>playBeep(1320,0.08,'sine',0.08),120); }
-  function soundWrong(){ playBeep(220,0.18,'sawtooth',0.12); }
+];
 
-  // helper show screen
-  function showScreen(name){
-    [$lobby,$room,$game,$results].forEach(s => s.classList.remove('active'));
-    if(name==='lobby') $lobby.classList.add('active');
-    if(name==='room') $room.classList.add('active');
-    if(name==='game') $game.classList.add('active');
-    if(name==='results') $results.classList.add('active');
+// ===============================
+// ⚙️ Variáveis globais
+// ===============================
+let currentQuestion = 0;
+let score = 0;
+let answered = false;
+let timer;
+let timeLeft = 10;
+let totalPlayers = {}; // { nickname: score }
+let playerName = "";
+let roomCode = "";
+
+// ===============================
+// 🔄 Utilidades
+// ===============================
+function shuffle(array) {
+  return array.sort(() => Math.random() - 0.5);
+}
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ===============================
+// 🧩 Lobby
+// ===============================
+document.getElementById("createRoomBtn").addEventListener("click", () => {
+  playerName = document.getElementById("nickname").value.trim();
+  if (!playerName) return alert("Digite seu nome!");
+  roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+  document.getElementById("roomCodeDisplay").textContent = roomCode;
+  totalPlayers[playerName] = 0;
+  updatePlayerList();
+  showScreen("room");
+});
+
+document.getElementById("joinRoomBtn").addEventListener("click", () => {
+  playerName = document.getElementById("nickname").value.trim();
+  roomCode = document.getElementById("roomCode").value.trim().toUpperCase();
+  if (!playerName || !roomCode) return alert("Preencha nome e código da sala!");
+  totalPlayers[playerName] = 0;
+  document.getElementById("roomCodeDisplay").textContent = roomCode;
+  updatePlayerList();
+  showScreen("room");
+});
+
+function updatePlayerList() {
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  Object.keys(totalPlayers).forEach((p) => {
+    const li = document.createElement("li");
+    li.textContent = `${p} — ${totalPlayers[p]} pts`;
+    list.appendChild(li);
+  });
+}
+
+// ===============================
+// ▶️ Início do jogo
+// ===============================
+document.getElementById("startGameBtn").addEventListener("click", () => {
+  currentQuestion = 0;
+  score = 0;
+  showScreen("game");
+  nextQuestion();
+});
+
+// ===============================
+// ❓ Exibir pergunta
+// ===============================
+function nextQuestion() {
+  if (currentQuestion >= questions.length) {
+    endGame();
+    return;
   }
 
-  // render players list
-  function renderPlayers(arr){
-    $playerList.innerHTML = '';
-    arr.forEach(p => {
-      const li = document.createElement('li');
-      li.textContent = `${p.name} — ${p.score || 0} pts`;
-      $playerList.appendChild(li);
-    });
-  }
+  answered = false;
+  timeLeft = 10;
+  document.getElementById("roundLabel").textContent = `Pergunta ${currentQuestion + 1}`;
+  document.getElementById("timer").textContent = `${timeLeft}s`;
 
-  // Lobby actions
-  $createRoomBtn.addEventListener('click', () => {
-    myName = $nickname.value.trim();
-    if(!myName) return alert('Digite seu nome!');
-    soundClick();
-    socket.emit('createRoom', myName);
+  const q = questions[currentQuestion];
+  const shuffledOptions = shuffle([...q.options]);
+  const optionsDiv = document.getElementById("options");
+  document.getElementById("questionText").textContent = q.question;
+  optionsDiv.innerHTML = "";
+
+  shuffledOptions.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.textContent = opt;
+    btn.className = "option-btn";
+    btn.addEventListener("click", () => selectOption(btn, opt, q));
+    optionsDiv.appendChild(btn);
   });
 
-  $joinRoomBtn.addEventListener('click', () => {
-    myName = $nickname.value.trim();
-    const code = $roomCodeInput.value.trim().toUpperCase();
-    if(!myName || !code) return alert('Preencha seu nome e o código da sala!');
-    soundClick();
-    socket.emit('joinRoom', { roomCode: code, playerName: myName });
-  });
+  startTimer();
+}
 
-  $leaveBtn.addEventListener('click', () => {
-    if(currentRoom) socket.emit('leaveRoom', currentRoom);
-    currentRoom = '';
-    myName = '';
-    $nickname.value = '';
-    $roomCodeInput.value = '';
-    showScreen('lobby');
-  });
-
-  $startGameBtn.addEventListener('click', () => {
-    if(!currentRoom) return;
-    socket.emit('startGame', currentRoom);
-  });
-
-  $backToLobbyBtn.addEventListener('click', () => {
-    // reset local UI
-    currentRoom = '';
-    showScreen('lobby');
-  });
-
-  // Socket listeners
-  socket.on('roomCreated', (code) => {
-    currentRoom = code;
-    $roomCodeDisplay.textContent = code;
-    showScreen('room');
-    // request players update (server emits updatePlayers as well)
-  });
-
-  socket.on('roomJoined', ({ roomCode, players }) => {
-    currentRoom = roomCode;
-    $roomCodeDisplay.textContent = roomCode;
-    renderPlayers(players || []);
-    showScreen('room');
-  });
-
-  socket.on('roomError', (msg) => {
-    alert(msg);
-  });
-
-  socket.on('updatePlayers', (players) => {
-    renderPlayers(players || []);
-  });
-
-  socket.on('preStart', ({ seconds }) => {
-    showScreen('game');
-    $questionText.textContent = `Jogo começa em ${seconds}...`;
-    $options.innerHTML = '';
-    $roundStatus.textContent = '';
-    $timerText.textContent = `${seconds}s`;
-    $timerFill.style.width = '100%';
-    // local countdown
-    let s = seconds;
-    clearInterval(localTimer);
-    localTimer = setInterval(() => {
-      s--;
-      $timerText.textContent = `${s}s`;
-      $timerFill.style.width = `${(s/seconds)*100}%`;
-      if(s <= 0) clearInterval(localTimer);
-    }, 1000);
-  });
-
-  // receive question (server sends shuffled options; correctIndex is hidden)
-  socket.on('question', (data) => {
-    // data: { question, options[], correctIndex (null), time }
-    localAnswered = false;
-    lastQuestionMeta = { options: data.options.slice(), correctShuffled: null, time: data.time || 8 };
-    showScreen('game');
-    $roundLabel.textContent = `Pergunta ${ (data.index !== undefined ? data.index+1 : '...') } / 10`;
-    $questionText.textContent = data.question;
-    $options.innerHTML = '';
-    $roundStatus.textContent = '';
-
-    // render options
-    data.options.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = '';
-      btn.innerText = opt;
-      btn.style.width = '100%';
-      btn.style.padding = '12px';
-      btn.style.borderRadius = '10px';
-      btn.style.border = '1px solid rgba(0,0,0,0.06)';
-      btn.style.background = '#f5f8ff';
-      btn.style.fontWeight = '700';
-      btn.addEventListener('click', () => {
-        if(localAnswered) return;
-        localAnswered = true;
-        // disable buttons
-        Array.from($options.children).forEach(c => c.disabled = true);
-        // send answer (index in displayed options)
-        socket.emit('answer', { roomCode: currentRoom, playerName: myName, answerIndex: i });
-        $roundStatus.textContent = 'Resposta enviada! Aguardando...';
-      });
-      $options.appendChild(btn);
-    });
-
-    // local timer visual (server authoritative)
-    startLocalTimer(lastQuestionMeta.time);
-  });
-
-  socket.on('reveal', ({ correctIndex }) => {
-    // correctIndex is index in the options array the server sent (shuffled)
-    // colorize and show
-    const buttons = Array.from($options.children);
-    buttons.forEach((btn, i) => {
-      btn.disabled = true;
-      btn.classList.remove('correct','wrong');
-      if (i === correctIndex) {
-        btn.classList.add('correct');
-      } else {
-        // if user selected it earlier (we can't know which was clicked unless we tracked),
-        // but buttons disabled; leave as is (client doesn't track clicked class). For better UX,
-        // we can briefly mark any non-correct but disabled as wrong if they were clicked — not tracked here to keep code simple.
-      }
-    });
-    $roundStatus.textContent = 'Resposta correta mostrada';
-    // stop timer visual
-    clearInterval(localTimer);
-    $timerText.textContent = '0s';
-    $timerFill.style.width = '0%';
-  });
-
-  socket.on('showResults', (ranking) => {
-    // ranking is array of { name, score, correctCount, accuracy }
-    $podium.innerHTML = '';
-    $finalRanking.innerHTML = '';
-
-    if (ranking.length > 0) {
-      const first = ranking[0];
-      const second = ranking[1];
-      const third = ranking[2];
-      $podium.innerHTML = `
-        <div class="place">${second ? '🥈 ' + second.name + '<br>' + (second.score||0) + ' pts' : ''}</div>
-        <div class="place first">${first ? '🥇 ' + first.name + '<br>' + (first.score||0) + ' pts' : ''}</div>
-        <div class="place">${third ? '🥉 ' + third.name + '<br>' + (third.score||0) + ' pts' : ''}</div>
-      `;
+// ===============================
+// ⏱️ Temporizador
+// ===============================
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    timeLeft--;
+    document.getElementById("timer").textContent = `${timeLeft}s`;
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      revealAnswer();
     }
+  }, 1000);
+}
 
-    // full ranking, sorted by score desc then name
-    ranking.sort((a,b) => b.score - a.score || a.name.localeCompare(b.name));
-    ranking.forEach((p, i) => {
-      const row = document.createElement('div');
-      row.className = 'row';
-      row.innerHTML = `<div style="font-weight:700">${i+1}º — ${p.name}</div><div>${p.score} pts • ${p.correctCount||0}/${10} acertos • ${p.accuracy||0}%</div>`;
-      $finalRanking.appendChild(row);
-    });
+// ===============================
+// 🟩 Selecionar resposta
+// ===============================
+function selectOption(button, selected, q) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timer);
 
-    showScreen('results');
+  const correct = selected === q.options[q.answer];
+  if (correct) score++;
+
+  button.classList.add("selected");
+
+  // Espera o tempo acabar ou todos responderem
+  setTimeout(() => revealAnswer(correct), 200);
+}
+
+// ===============================
+// 🎯 Revelar resposta certa
+// ===============================
+function revealAnswer(correct = false) {
+  const buttons = document.querySelectorAll(".option-btn");
+  const q = questions[currentQuestion];
+  buttons.forEach((btn) => {
+    btn.disabled = true;
+    if (btn.textContent === q.options[q.answer]) {
+      btn.style.background = "#28a745"; // verde
+      btn.style.color = "#fff";
+    } else if (btn.classList.contains("selected")) {
+      btn.style.background = "#dc3545"; // vermelho
+      btn.style.color = "#fff";
+    } else {
+      btn.style.opacity = "0.6";
+    }
   });
 
-  // local timer visual
-  function startLocalTimer(seconds) {
-    clearInterval(localTimer);
-    localTimeLeft = seconds;
-    $timerText.textContent = `${localTimeLeft}s`;
-    $timerFill.style.width = '100%';
-    localTimer = setInterval(() => {
-      localTimeLeft--;
-      if (localTimeLeft < 0) localTimeLeft = 0;
-      $timerText.textContent = `${localTimeLeft}s`;
-      $timerFill.style.width = `${(localTimeLeft/seconds)*100}%`;
-      if(localTimeLeft <= 0) {
-        clearInterval(localTimer);
-        // time out — disable options
-        Array.from($options.children).forEach(c => c.disabled = true);
-        $roundStatus.textContent = 'Tempo esgotado — aguardando...';
-      }
-    }, 1000);
-  }
+  // Som
+  if (answered && correct) soundCorrect.play();
+  else if (answered && !correct) soundWrong.play();
 
-  // ensure audio context resumes after user gesture (some browsers block sound)
-  document.addEventListener('click', ()=> { if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{}); }, {once:true});
+  // Avança depois de 1.5s
+  setTimeout(() => {
+    currentQuestion++;
+    nextQuestion();
+  }, 1500);
+}
 
-  // initial screen
-  showScreen('lobby');
+// ===============================
+// 🏁 Fim do jogo
+// ===============================
+function endGame() {
+  showScreen("result");
+  totalPlayers[playerName] = score;
 
-})();
+  // Ranking ordenado
+  const ranking = Object.entries(totalPlayers).sort((a, b) => b[1] - a[1]);
+  const final = ranking
+    .map(([p, s], i) => {
+      const pos = i + 1;
+      const medal = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : `${pos}º`;
+      const perc = Math.round((s / questions.length) * 100);
+      return `${medal} ${p} — ${s} acertos (${perc}%)`;
+    })
+    .join("<br>");
+
+  document.getElementById("final-score").innerHTML = final;
+  document.getElementById("accuracy").textContent = "";
+}
+
+document.getElementById("backToLobbyBtn").addEventListener("click", () => {
+  showScreen("lobby");
+});
