@@ -1,15 +1,9 @@
 // ===============================
-// 🔊 Sons embutidos (sem precisar baixar nada)
+// 🔊 Sons embutidos em Base64 (não precisa baixar nada)
 // ===============================
-
-// som curto de acerto ✅
 const soundCorrect = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); 
-
-// som curto de erro ❌
 const soundWrong = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA...");
-
-// som de vitória 🏆 (base64 completo)
-const soundVictory = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAAAAPAAABEV4YW1wbGUgVmljdG9yeSBTb3VuZA..."); 
+const soundVictory = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAAAAPAAABEV4YW1wbGUgVmljdG9yeSBTb3VuZA...");
 
 // ===============================
 // 📦 Perguntas
@@ -148,9 +142,9 @@ function selectOption(button, selected, q) {
   answered = true;
   clearInterval(timer);
 
-  const correct = selected === q.options[q.answer];
   button.classList.add("selected");
 
+  const correct = selected === q.options[q.answer];
   if (correct) {
     score++;
     soundCorrect.play();
@@ -160,13 +154,13 @@ function selectOption(button, selected, q) {
     navigator.vibrate?.([60, 40, 60]);
   }
 
-  revealAnswer(correct);
+  revealAnswer();
 }
 
 // ===============================
 // 🎯 Revelar resposta
 // ===============================
-function revealAnswer(correct = false) {
+function revealAnswer() {
   const buttons = document.querySelectorAll(".option-btn");
   const q = questions[currentQuestion];
   buttons.forEach((btn) => {
