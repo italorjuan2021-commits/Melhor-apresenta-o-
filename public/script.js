@@ -1,13 +1,17 @@
-// script.js — versão final 🔥 com pódio e sons embutidos
+// =========================================================
+// 🎮 A NARRAÇÃO — Versão Final com Pódio + Sons + Feedback
+// =========================================================
+
+// 🎵 Sons de acerto e erro (base64 — sem precisar baixar)
+const soundCorrect = new Audio(
+  "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA..."
+);
+const soundWrong = new Audio(
+  "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA..."
+);
 
 // ===============================
-// 🎵 Sons (base64 — sem precisar baixar)
-// ===============================
-const soundCorrect = new Audio("data:audio/mp3;base64,//uQxAA..."); // som curto de acerto
-const soundWrong = new Audio("data:audio/mp3;base64,//uQxAA..."); // som curto de erro
-
-// ===============================
-// 📦 Dados das perguntas
+// 📦 Perguntas do Quiz
 // ===============================
 const questions = [
   {
@@ -103,7 +107,7 @@ const questions = [
 ];
 
 // ===============================
-// ⚙️ Variáveis globais
+// ⚙️ Variáveis de Controle
 // ===============================
 let currentQuestion = 0;
 let score = 0;
@@ -115,7 +119,7 @@ let playerName = "";
 let roomCode = "";
 
 // ===============================
-// 🔄 Utilidades
+// 🔄 Funções Úteis
 // ===============================
 function shuffle(array) {
   return array.sort(() => Math.random() - 0.5);
@@ -170,7 +174,7 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
 });
 
 // ===============================
-// ❓ Exibir pergunta
+// ❓ Exibir Pergunta
 // ===============================
 function nextQuestion() {
   if (currentQuestion >= questions.length) {
@@ -216,7 +220,7 @@ function startTimer() {
 }
 
 // ===============================
-// 🟩 Selecionar resposta
+// 🟩 Selecionar Resposta
 // ===============================
 function selectOption(button, selected, q) {
   if (answered) return;
@@ -232,26 +236,30 @@ function selectOption(button, selected, q) {
 }
 
 // ===============================
-// 🎯 Revelar resposta certa
+// 🎯 Revelar Resposta Certa
 // ===============================
 function revealAnswer(correct = false) {
   const buttons = document.querySelectorAll(".option-btn");
   const q = questions[currentQuestion];
+
   buttons.forEach((btn) => {
     btn.disabled = true;
     if (btn.textContent === q.options[q.answer]) {
-      btn.style.background = "#28a745";
-      btn.style.color = "#fff";
+      btn.classList.add("correct");
     } else if (btn.classList.contains("selected")) {
-      btn.style.background = "#dc3545";
-      btn.style.color = "#fff";
+      btn.classList.add("wrong");
     } else {
-      btn.style.opacity = "0.6";
+      btn.style.opacity = "0.7";
     }
   });
 
-  if (answered && correct) soundCorrect.play();
-  else if (answered && !correct) soundWrong.play();
+  if (answered && correct) {
+    soundCorrect.play();
+    navigator.vibrate?.(150);
+  } else if (answered && !correct) {
+    soundWrong.play();
+    navigator.vibrate?.([100, 50, 100]);
+  }
 
   setTimeout(() => {
     currentQuestion++;
@@ -260,45 +268,46 @@ function revealAnswer(correct = false) {
 }
 
 // ===============================
-// 🏁 Fim do jogo com PÓDIO 🏆
+// 🏁 Fim do Jogo com PÓDIO 🏆
 // ===============================
 function endGame() {
-  showScreen("result");
   totalPlayers[playerName] = score;
+  showScreen("results");
 
   const ranking = Object.entries(totalPlayers).sort((a, b) => b[1] - a[1]);
 
-  // 🎖️ Montar pódio
-  let podium = `<div style="display:flex;justify-content:center;align-items:flex-end;gap:15px;margin-top:20px;">`;
-  ranking.slice(0, 3).forEach(([p, s], i) => {
-    const height = i === 0 ? 100 : i === 1 ? 80 : 60;
-    const color = i === 0 ? "#ffd700" : i === 1 ? "#c0c0c0" : "#cd7f32";
-    podium += `
-      <div style="text-align:center;">
-        <div style="background:${color};width:70px;height:${height}px;border-radius:10px 10px 0 0;box-shadow:0 4px 15px rgba(0,0,0,0.3);"></div>
-        <p style="margin-top:5px;font-weight:700;">${p}</p>
-        <small>${s} pts</small>
-      </div>`;
+  // 🎖️ Pódio visual
+  const podiumDiv = document.getElementById("podium");
+  podiumDiv.innerHTML = "";
+  const podiumColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+  ranking.slice(0, 3).forEach(([name, points], i) => {
+    const place = document.createElement("div");
+    place.classList.add("place");
+    if (i === 0) place.classList.add("first");
+    place.innerHTML = `<strong>${i + 1}º</strong><br>${name}<br><small>${points} pts</small>`;
+    place.style.background = podiumColors[i];
+    podiumDiv.appendChild(place);
   });
-  podium += "</div>";
 
   // 🧾 Lista completa
-  const fullRanking = ranking
+  const finalList = document.getElementById("finalRanking");
+  finalList.innerHTML = ranking
     .map(
       ([p, s], i) =>
-        `${i + 1}º — <strong>${p}</strong>: ${s} acertos (${Math.round(
+        `<p>${i + 1}º — <strong>${p}</strong>: ${s} acertos (${Math.round(
           (s / questions.length) * 100
-        )}%)`
+        )}%)</p>`
     )
-    .join("<br>");
+    .join("");
 
-  document.getElementById("final-score").innerHTML = `
-    ${podium}
-    <div style="margin-top:20px;text-align:left;">${fullRanking}</div>
-  `;
-  document.getElementById("accuracy").textContent = "";
+  // 🔊 Som e vibração final
+  soundCorrect.play();
+  navigator.vibrate?.([200, 100, 200]);
 }
 
+// ===============================
+// 🔁 Voltar ao Início
+// ===============================
 document.getElementById("backToLobbyBtn").addEventListener("click", () => {
   showScreen("lobby");
 });
