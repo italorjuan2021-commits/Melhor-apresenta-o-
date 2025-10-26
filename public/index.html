@@ -1,9 +1,8 @@
-
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>A NARRAÇÃO - Jogo Interativo</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>A NARRAÇÃO - Quiz Multiplayer</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -13,59 +12,71 @@
       <p class="credits">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
     </header>
 
-    <!-- Lobby -->
+    <!-- LOBBY -->
     <section id="lobby" class="screen active">
       <div class="card">
         <h2>Crie ou entre em uma sala</h2>
-        <p style="color:#cbd8ff;">Desafie seus colegas e descubra quem entende mais de narração!</p>
-        <input type="text" id="nickname" placeholder="Digite seu nome..." /><br>
-        <button id="createRoomBtn">Criar Sala 🎯</button>
-        <p>ou</p>
-        <input type="text" id="roomCode" placeholder="Código da sala..." /><br>
-        <button id="joinRoomBtn">Entrar na Sala 🚪</button>
+        <p class="muted">Junte seus colegas e competam — cada pergunta vale 10 pontos.</p>
+        <input id="nickname" placeholder="Seu nome" type="text" />
+        <div style="height:10px"></div>
+        <input id="roomCode" placeholder="Código da sala (deixe vazio para criar)" type="text" />
+        <div style="height:14px"></div>
+        <div class="row">
+          <button id="createRoomBtn" class="btn primary">Criar Sala</button>
+          <button id="joinRoomBtn" class="btn outline">Entrar</button>
+        </div>
+        <p class="hint">Ao criar, um código será gerado — compartilhe com os colegas.</p>
       </div>
     </section>
 
-    <!-- Sala -->
+    <!-- ROOM -->
     <section id="room" class="screen">
       <div class="card">
-        <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
+        <div class="top">
+          <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
+        </div>
         <div class="players">
-          <h3>Jogadores:</h3>
+          <h3>Jogadores</h3>
           <ul id="playerList"></ul>
         </div>
-        <br>
-        <button id="startGameBtn">Iniciar Jogo 🎮</button>
+        <div style="height:12px"></div>
+        <button id="startGameBtn" class="btn primary">Iniciar jogo (5s)</button>
+        <button id="leaveBtn" class="btn outline">Sair</button>
       </div>
     </section>
 
-    <!-- Jogo -->
+    <!-- GAME -->
     <section id="game" class="screen">
       <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span id="roundLabel">Pergunta 1</span>
-          <span id="timer">8s</span>
+        <div class="game-header">
+          <div id="roundLabel">Rodada 1</div>
+          <div id="timer">8s</div>
         </div>
+        <div id="timerBar" class="timer-bar">
+          <div id="timerFill" class="timer-fill"></div>
+        </div>
+
         <div class="question-card">
-          <div class="question" id="questionText">Carregando pergunta...</div>
-          <div class="options-grid" id="options"></div>
+          <div id="questionText" class="question">Carregando pergunta...</div>
+          <div id="options" class="options-grid"></div>
+          <div id="roundStatus" style="margin-top:12px"></div>
         </div>
       </div>
     </section>
 
-    <!-- Resultado -->
-    <section id="result" class="screen">
-      <div class="results-card">
-        <h2>🏆 Fim do Jogo!</h2>
-        <div id="ranking"></div>
-        <button id="backToLobbyBtn">Voltar ao Início</button>
+    <!-- RESULTS -->
+    <section id="results" class="screen">
+      <div class="card">
+        <h2>🏆 Resultado Final</h2>
+        <div id="podium" class="podium"></div>
+        <div id="finalRanking"></div>
+        <div style="height:12px"></div>
+        <button id="backToLobbyBtn" class="btn primary">Voltar ao Início</button>
       </div>
     </section>
   </div>
 
-  <audio id="soundCorrect" src="acerto.mp3"></audio>
-  <audio id="soundWrong" src="erro.mp3"></audio>
-
+  <!-- socket.io + client script -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
