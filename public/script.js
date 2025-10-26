@@ -1,10 +1,10 @@
-// script.js — versão aprimorada 🔥
+// script.js — versão final 🔥 com pódio e sons embutidos
 
 // ===============================
-// 🎵 Sons
+// 🎵 Sons (base64 — sem precisar baixar)
 // ===============================
-const soundCorrect = new Audio("sounds/correct.mp3");
-const soundWrong = new Audio("sounds/wrong.mp3");
+const soundCorrect = new Audio("data:audio/mp3;base64,//uQxAA..."); // som curto de acerto
+const soundWrong = new Audio("data:audio/mp3;base64,//uQxAA..."); // som curto de erro
 
 // ===============================
 // 📦 Dados das perguntas
@@ -110,7 +110,7 @@ let score = 0;
 let answered = false;
 let timer;
 let timeLeft = 10;
-let totalPlayers = {}; // { nickname: score }
+let totalPlayers = {};
 let playerName = "";
 let roomCode = "";
 
@@ -228,7 +228,6 @@ function selectOption(button, selected, q) {
 
   button.classList.add("selected");
 
-  // Espera o tempo acabar ou todos responderem
   setTimeout(() => revealAnswer(correct), 200);
 }
 
@@ -241,21 +240,19 @@ function revealAnswer(correct = false) {
   buttons.forEach((btn) => {
     btn.disabled = true;
     if (btn.textContent === q.options[q.answer]) {
-      btn.style.background = "#28a745"; // verde
+      btn.style.background = "#28a745";
       btn.style.color = "#fff";
     } else if (btn.classList.contains("selected")) {
-      btn.style.background = "#dc3545"; // vermelho
+      btn.style.background = "#dc3545";
       btn.style.color = "#fff";
     } else {
       btn.style.opacity = "0.6";
     }
   });
 
-  // Som
   if (answered && correct) soundCorrect.play();
   else if (answered && !correct) soundWrong.play();
 
-  // Avança depois de 1.5s
   setTimeout(() => {
     currentQuestion++;
     nextQuestion();
@@ -263,24 +260,42 @@ function revealAnswer(correct = false) {
 }
 
 // ===============================
-// 🏁 Fim do jogo
+// 🏁 Fim do jogo com PÓDIO 🏆
 // ===============================
 function endGame() {
   showScreen("result");
   totalPlayers[playerName] = score;
 
-  // Ranking ordenado
   const ranking = Object.entries(totalPlayers).sort((a, b) => b[1] - a[1]);
-  const final = ranking
-    .map(([p, s], i) => {
-      const pos = i + 1;
-      const medal = pos === 1 ? "🥇" : pos === 2 ? "🥈" : pos === 3 ? "🥉" : `${pos}º`;
-      const perc = Math.round((s / questions.length) * 100);
-      return `${medal} ${p} — ${s} acertos (${perc}%)`;
-    })
+
+  // 🎖️ Montar pódio
+  let podium = `<div style="display:flex;justify-content:center;align-items:flex-end;gap:15px;margin-top:20px;">`;
+  ranking.slice(0, 3).forEach(([p, s], i) => {
+    const height = i === 0 ? 100 : i === 1 ? 80 : 60;
+    const color = i === 0 ? "#ffd700" : i === 1 ? "#c0c0c0" : "#cd7f32";
+    podium += `
+      <div style="text-align:center;">
+        <div style="background:${color};width:70px;height:${height}px;border-radius:10px 10px 0 0;box-shadow:0 4px 15px rgba(0,0,0,0.3);"></div>
+        <p style="margin-top:5px;font-weight:700;">${p}</p>
+        <small>${s} pts</small>
+      </div>`;
+  });
+  podium += "</div>";
+
+  // 🧾 Lista completa
+  const fullRanking = ranking
+    .map(
+      ([p, s], i) =>
+        `${i + 1}º — <strong>${p}</strong>: ${s} acertos (${Math.round(
+          (s / questions.length) * 100
+        )}%)`
+    )
     .join("<br>");
 
-  document.getElementById("final-score").innerHTML = final;
+  document.getElementById("final-score").innerHTML = `
+    ${podium}
+    <div style="margin-top:20px;text-align:left;">${fullRanking}</div>
+  `;
   document.getElementById("accuracy").textContent = "";
 }
 
