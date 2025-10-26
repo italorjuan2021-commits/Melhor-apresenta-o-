@@ -28,7 +28,7 @@ let currentQuestion = 0;
 let score = 0;
 let answered = false;
 let timer;
-let timeLeft = 15;
+let timeLeft = 8.9;
 let totalPlayers = {};
 let playerName = "";
 let roomCode = "";
