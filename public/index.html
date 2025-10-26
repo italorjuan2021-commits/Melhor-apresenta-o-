@@ -1,3 +1,4 @@
+
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -41,7 +42,6 @@
         </div>
         <div style="height:12px"></div>
         <button id="startGameBtn" class="btn primary">Iniciar jogo (5s)</button>
-        <button id="leaveBtn" class="btn outline">Sair</button>
       </div>
     </section>
 
@@ -52,10 +52,6 @@
           <div id="roundLabel">Rodada 1</div>
           <div id="timer">8s</div>
         </div>
-        <div id="timerBar" class="timer-bar">
-          <div id="timerFill" class="timer-fill"></div>
-        </div>
-
         <div class="question-card">
           <div id="questionText" class="question">Carregando pergunta...</div>
           <div id="options" class="options-grid"></div>
@@ -76,7 +72,7 @@
     </section>
   </div>
 
-  <!-- socket.io + client script -->
+  <!-- Socket.IO e script -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
