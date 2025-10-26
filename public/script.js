@@ -1,11 +1,4 @@
 // ===============================
-// 🔊 Sons embutidos em Base64 (não precisa baixar nada)
-// ===============================
-const soundCorrect = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); 
-const soundWrong = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA...");
-const soundVictory = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAAAAPAAABEV4YW1wbGUgVmljdG9yeSBTb3VuZA...");
-
-// ===============================
 // 📦 Perguntas
 // ===============================
 const questions = [
@@ -28,7 +21,7 @@ let currentQuestion = 0;
 let score = 0;
 let answered = false;
 let timer;
-let timeLeft = 8.9;
+let timeLeft = 8;
 let totalPlayers = {};
 let playerName = "";
 let roomCode = "";
@@ -43,6 +36,35 @@ function shuffle(array) {
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
+}
+
+// ===============================
+// 🔊 Sons funcionais sem arquivo externo
+// ===============================
+function playCorrectSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.type = "sine";
+  o.frequency.value = 880; // tom agudo
+  g.gain.value = 0.1;
+  o.start();
+  o.stop(ctx.currentTime + 0.2);
+}
+
+function playWrongSound() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.type = "sawtooth";
+  o.frequency.value = 200; // tom grave
+  g.gain.value = 0.1;
+  o.start();
+  o.stop(ctx.currentTime + 0.3);
 }
 
 // ===============================
@@ -98,7 +120,7 @@ function nextQuestion() {
   }
 
   answered = false;
-  timeLeft = 15;
+  timeLeft = 8;
   document.getElementById("roundLabel").textContent = `Pergunta ${currentQuestion + 1}`;
   document.getElementById("timer").textContent = `${timeLeft}s`;
 
@@ -147,10 +169,10 @@ function selectOption(button, selected, q) {
   const correct = selected === q.options[q.answer];
   if (correct) {
     score++;
-    soundCorrect.play();
+    playCorrectSound();
     navigator.vibrate?.(120);
   } else {
-    soundWrong.play();
+    playWrongSound();
     navigator.vibrate?.([60, 40, 60]);
   }
 
@@ -177,16 +199,14 @@ function revealAnswer() {
   setTimeout(() => {
     currentQuestion++;
     nextQuestion();
-  }, 1500);
+  }, 800);
 }
 
 // ===============================
 // 🏁 Final com PÓDIO 🏆
-// ===============================
 function endGame() {
   showScreen("results");
   totalPlayers[playerName] = score;
-  soundVictory.play();
   navigator.vibrate?.([200, 100, 200]);
 
   const ranking = Object.entries(totalPlayers).sort((a, b) => b[1] - a[1]);
@@ -215,14 +235,12 @@ function endGame() {
 
 // ===============================
 // 🔁 Voltar ao lobby
-// ===============================
 document.getElementById("backToLobbyBtn").addEventListener("click", () => {
   showScreen("lobby");
 });
 
 // ===============================
 // 💃 Animações extras
-// ===============================
 const style = document.createElement("style");
 style.textContent = `
 @keyframes bounceIn {
