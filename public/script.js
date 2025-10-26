@@ -1,125 +1,46 @@
-// =========================================================
-// 🎮 A NARRAÇÃO — Versão Final com Pódio + Sons + Feedback
-// =========================================================
+// ===============================
+// 🔊 Sons embutidos (sem precisar baixar nada)
+// ===============================
 
-// 🎵 Sons de acerto e erro (base64 — sem precisar baixar)
-const soundCorrect = new Audio(
-  "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA..."
-);
-const soundWrong = new Audio(
-  "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA..."
-);
+// som curto de acerto ✅
+const soundCorrect = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); 
+
+// som curto de erro ❌
+const soundWrong = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA...");
+
+// som de vitória 🏆 (base64 completo)
+const soundVictory = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAAAAPAAABEV4YW1wbGUgVmljdG9yeSBTb3VuZA..."); 
 
 // ===============================
-// 📦 Perguntas do Quiz
+// 📦 Perguntas
 // ===============================
 const questions = [
-  {
-    question: "O que é uma narração?",
-    options: [
-      "Um texto que conta uma história com personagens e tempo",
-      "Um texto que descreve objetos ou lugares",
-      "Um texto que defende uma opinião",
-      "Um texto que explica um conceito"
-    ],
-    answer: 0
-  },
-  {
-    question: "Qual é o principal elemento da narração?",
-    options: ["O narrador", "O autor", "O título", "O tema"],
-    answer: 0
-  },
-  {
-    question: "O que é o enredo?",
-    options: [
-      "A sequência de ações e acontecimentos da história",
-      "O espaço onde ocorre a história",
-      "O conflito dos personagens",
-      "A fala dos personagens"
-    ],
-    answer: 0
-  },
-  {
-    question: "Quem conta a história em um texto narrativo?",
-    options: ["O narrador", "O protagonista", "O autor", "O leitor"],
-    answer: 0
-  },
-  {
-    question: "Qual desses é um tipo de narrador?",
-    options: [
-      "Narrador-personagem",
-      "Narrador-ilustrador",
-      "Narrador-público",
-      "Narrador-anônimo"
-    ],
-    answer: 0
-  },
-  {
-    question: "O que é o clímax na narrativa?",
-    options: [
-      "O momento de maior tensão da história",
-      "O início da história",
-      "A conclusão da história",
-      "A descrição do espaço"
-    ],
-    answer: 0
-  },
-  {
-    question: "O que representa o desfecho?",
-    options: [
-      "A parte final onde o conflito é resolvido",
-      "O começo da história",
-      "O conflito central",
-      "A fala dos personagens"
-    ],
-    answer: 0
-  },
-  {
-    question: "Qual é a função do tempo na narração?",
-    options: [
-      "Situar os acontecimentos",
-      "Descrever personagens",
-      "Defender uma tese",
-      "Apresentar um argumento"
-    ],
-    answer: 0
-  },
-  {
-    question: "O espaço narrativo representa:",
-    options: [
-      "O lugar onde a história se passa",
-      "O tempo dos acontecimentos",
-      "O ponto de vista do narrador",
-      "O tema principal"
-    ],
-    answer: 0
-  },
-  {
-    question: "Quem é o protagonista?",
-    options: [
-      "O personagem principal da história",
-      "O narrador observador",
-      "O antagonista",
-      "O autor do texto"
-    ],
-    answer: 0
-  }
+  { question: "O que é uma narração?", options: ["Um texto que conta uma história com personagens e tempo", "Um texto que descreve objetos ou lugares", "Um texto que defende uma opinião", "Um texto que explica um conceito"], answer: 0 },
+  { question: "Qual é o principal elemento da narração?", options: ["O narrador", "O autor", "O título", "O tema"], answer: 0 },
+  { question: "O que é o enredo?", options: ["A sequência de ações e acontecimentos da história", "O espaço onde ocorre a história", "O conflito dos personagens", "A fala dos personagens"], answer: 0 },
+  { question: "Quem conta a história em um texto narrativo?", options: ["O narrador", "O protagonista", "O autor", "O leitor"], answer: 0 },
+  { question: "Qual desses é um tipo de narrador?", options: ["Narrador-personagem", "Narrador-ilustrador", "Narrador-público", "Narrador-anônimo"], answer: 0 },
+  { question: "O que é o clímax na narrativa?", options: ["O momento de maior tensão da história", "O início da história", "A conclusão da história", "A descrição do espaço"], answer: 0 },
+  { question: "O que representa o desfecho?", options: ["A parte final onde o conflito é resolvido", "O começo da história", "O conflito central", "A fala dos personagens"], answer: 0 },
+  { question: "Qual é a função do tempo na narração?", options: ["Situar os acontecimentos", "Descrever personagens", "Defender uma tese", "Apresentar um argumento"], answer: 0 },
+  { question: "O espaço narrativo representa:", options: ["O lugar onde a história se passa", "O tempo dos acontecimentos", "O ponto de vista do narrador", "O tema principal"], answer: 0 },
+  { question: "Quem é o protagonista?", options: ["O personagem principal da história", "O narrador observador", "O antagonista", "O autor do texto"], answer: 0 }
 ];
 
 // ===============================
-// ⚙️ Variáveis de Controle
+// ⚙️ Variáveis globais
 // ===============================
 let currentQuestion = 0;
 let score = 0;
 let answered = false;
 let timer;
-let timeLeft = 10;
+let timeLeft = 15;
 let totalPlayers = {};
 let playerName = "";
 let roomCode = "";
 
 // ===============================
-// 🔄 Funções Úteis
+// 🔄 Funções utilitárias
 // ===============================
 function shuffle(array) {
   return array.sort(() => Math.random() - 0.5);
@@ -174,7 +95,7 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
 });
 
 // ===============================
-// ❓ Exibir Pergunta
+// ❓ Exibir pergunta
 // ===============================
 function nextQuestion() {
   if (currentQuestion >= questions.length) {
@@ -183,7 +104,7 @@ function nextQuestion() {
   }
 
   answered = false;
-  timeLeft = 10;
+  timeLeft = 15;
   document.getElementById("roundLabel").textContent = `Pergunta ${currentQuestion + 1}`;
   document.getElementById("timer").textContent = `${timeLeft}s`;
 
@@ -220,7 +141,7 @@ function startTimer() {
 }
 
 // ===============================
-// 🟩 Selecionar Resposta
+// 🟩 Selecionar resposta
 // ===============================
 function selectOption(button, selected, q) {
   if (answered) return;
@@ -228,20 +149,26 @@ function selectOption(button, selected, q) {
   clearInterval(timer);
 
   const correct = selected === q.options[q.answer];
-  if (correct) score++;
-
   button.classList.add("selected");
 
-  setTimeout(() => revealAnswer(correct), 200);
+  if (correct) {
+    score++;
+    soundCorrect.play();
+    navigator.vibrate?.(120);
+  } else {
+    soundWrong.play();
+    navigator.vibrate?.([60, 40, 60]);
+  }
+
+  revealAnswer(correct);
 }
 
 // ===============================
-// 🎯 Revelar Resposta Certa
+// 🎯 Revelar resposta
 // ===============================
 function revealAnswer(correct = false) {
   const buttons = document.querySelectorAll(".option-btn");
   const q = questions[currentQuestion];
-
   buttons.forEach((btn) => {
     btn.disabled = true;
     if (btn.textContent === q.options[q.answer]) {
@@ -249,17 +176,9 @@ function revealAnswer(correct = false) {
     } else if (btn.classList.contains("selected")) {
       btn.classList.add("wrong");
     } else {
-      btn.style.opacity = "0.7";
+      btn.style.opacity = "0.6";
     }
   });
-
-  if (answered && correct) {
-    soundCorrect.play();
-    navigator.vibrate?.(150);
-  } else if (answered && !correct) {
-    soundWrong.play();
-    navigator.vibrate?.([100, 50, 100]);
-  }
 
   setTimeout(() => {
     currentQuestion++;
@@ -268,46 +187,54 @@ function revealAnswer(correct = false) {
 }
 
 // ===============================
-// 🏁 Fim do Jogo com PÓDIO 🏆
+// 🏁 Final com PÓDIO 🏆
 // ===============================
 function endGame() {
-  totalPlayers[playerName] = score;
   showScreen("results");
+  totalPlayers[playerName] = score;
+  soundVictory.play();
+  navigator.vibrate?.([200, 100, 200]);
 
   const ranking = Object.entries(totalPlayers).sort((a, b) => b[1] - a[1]);
 
-  // 🎖️ Pódio visual
   const podiumDiv = document.getElementById("podium");
   podiumDiv.innerHTML = "";
-  const podiumColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
-  ranking.slice(0, 3).forEach(([name, points], i) => {
+
+  const podiumColors = ["#ffd700", "#c0c0c0", "#cd7f32"];
+  const podiumDelays = [0, 300, 600];
+
+  ranking.slice(0, 3).forEach(([p, s], i) => {
     const place = document.createElement("div");
     place.classList.add("place");
     if (i === 0) place.classList.add("first");
-    place.innerHTML = `<strong>${i + 1}º</strong><br>${name}<br><small>${points} pts</small>`;
-    place.style.background = podiumColors[i];
+    place.style.background = podiumColors[i] || "#fff";
+    place.style.animation = `bounceIn 0.6s ease ${podiumDelays[i]}ms both`;
+    place.innerHTML = `<div style="font-size:18px;">${i + 1}º</div><div>${p}</div><div>${s} pts</div>`;
     podiumDiv.appendChild(place);
   });
 
-  // 🧾 Lista completa
-  const finalList = document.getElementById("finalRanking");
-  finalList.innerHTML = ranking
-    .map(
-      ([p, s], i) =>
-        `<p>${i + 1}º — <strong>${p}</strong>: ${s} acertos (${Math.round(
-          (s / questions.length) * 100
-        )}%)</p>`
-    )
+  const finalRanking = document.getElementById("finalRanking");
+  finalRanking.innerHTML = ranking
+    .map(([p, s], i) => `<p>${i + 1}º — ${p}: ${s} acertos</p>`)
     .join("");
-
-  // 🔊 Som e vibração final
-  soundCorrect.play();
-  navigator.vibrate?.([200, 100, 200]);
 }
 
 // ===============================
-// 🔁 Voltar ao Início
+// 🔁 Voltar ao lobby
 // ===============================
 document.getElementById("backToLobbyBtn").addEventListener("click", () => {
   showScreen("lobby");
 });
+
+// ===============================
+// 💃 Animações extras
+// ===============================
+const style = document.createElement("style");
+style.textContent = `
+@keyframes bounceIn {
+  0% { transform: translateY(80px); opacity: 0; }
+  60% { transform: translateY(-10px); opacity: 1; }
+  80% { transform: translateY(5px); }
+  100% { transform: translateY(0); }
+}`;
+document.head.appendChild(style);
