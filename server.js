@@ -1,281 +1,191 @@
-// server.js
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+// ===============================
+// 🔊 Sons embutidos em Base64
+// ===============================
+const soundCorrect = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); // som de acerto
+const soundWrong   = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAA..."); // som de erro
+const soundVictory = new Audio("data:audio/mp3;base64,SUQzAwAAAAAAFlRFTkMAAAA..."); // som vitória
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+// ===============================
+// ⚙️ Variáveis globais
+// ===============================
+let currentQuestion = 0;
+let score = 0;
+let answered = false;
+let timer;
+let timeLeft = 8;
+let playerName = "";
+let roomCode = "";
 
-// Servir arquivos estáticos da pasta public
-app.use(express.static(path.join(__dirname, 'public')));
+// ===============================
+// 🔗 Conexão Socket.IO
+// ===============================
+const socket = io();
 
-const PORT = process.env.PORT || 3000;
-
-// --- CONFIG ---
-const ROOM_MAX_PLAYERS = 50;
-const QUESTIONS_COUNT = 10; // 10 perguntas por jogo
-const PRE_START_SECONDS = 5; // 5s antes de iniciar
-const QUESTION_SECONDS = 8;  // 8s por pergunta
-const POINTS_PER_QUESTION = 10;
-
-// Pool de perguntas (10)
-const QUESTION_POOL = [
-  { q: "O que é narração?", opts: ["Texto descritivo", "Texto que conta uma história", "Lista de instruções", "Resumo"], a: 1 },
-  { q: "Quem é o narrador?", opts: ["Autor", "Voz que conta a história", "Leitor", "Editor"], a: 1 },
-  { q: "O que é enredo?", opts: ["Sequência de acontecimentos", "Local da história", "Falas dos personagens", "Tema"], a: 0 },
-  { q: "O que é clímax?", opts: ["Início da história", "Ponto de maior tensão", "Resumo final", "Descrição do local"], a: 1 },
-  { q: "Qual elemento NÃO é essencial em uma narrativa?", opts: ["Enredo", "Personagens", "Estrutura de rimas", "Espaço"], a: 2 },
-  { q: "O que é o espaço na narração?", opts: ["Lugar onde acontece", "Tempo verbal", "Personagem secundário", "Tema"], a: 0 },
-  { q: "O narrador onisciente:", opts: ["Desconhece os pensamentos", "Sabe tudo sobre personagens", "É personagem principal", "Sempre usa 'eu'"], a: 1 },
-  { q: "O que é ponto de vista?", opts: ["Forma de contar a história", "Cor do livro", "Número de páginas", "Nome do autor"], a: 0 },
-  { q: "Narrador em primeira pessoa usa:", opts: ["'ele' ou 'ela'", "'nós'", "'eu'", "'vós'"], a: 2 },
-  { q: "Função principal da narração:", opts: ["Argumentar", "Contar história com começo, meio e fim", "Listar dados", "Dar instruções"], a: 1 }
-];
-
-// rooms structure in-memory
-const rooms = {};
-
-/*
-rooms[code] = {
-  players: { socketId: { id: socketId, name, score, correctCount } },
-  started: false,
-  questions: [ { q, opts, a } ],
-  currentIndex: 0,
-  answersThisRound: { socketId: answerIndex },
-  timers: { roundTimer: Timeout }
-}
-*/
-
-// helpers
-function makeRoomCode() {
-  return Math.random().toString(36).substring(2, 7).toUpperCase();
+// ===============================
+// 🔄 Funções utilitárias
+// ===============================
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 }
 
-function pickQuestions() {
-  // shuffle QUESTION_POOL and pick QUESTIONS_COUNT
-  const pool = [...QUESTION_POOL];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
-  return pool.slice(0, QUESTIONS_COUNT);
+// ===============================
+// 🧩 Lobby
+// ===============================
+document.getElementById("createRoomBtn").addEventListener("click", () => {
+  playerName = document.getElementById("nickname").value.trim();
+  if (!playerName) return alert("Digite seu nome!");
+  socket.emit('createRoom', playerName);
+});
+
+document.getElementById("joinRoomBtn").addEventListener("click", () => {
+  playerName = document.getElementById("nickname").value.trim();
+  roomCode = document.getElementById("roomCode").value.trim().toUpperCase();
+  if (!playerName || !roomCode) return alert("Preencha nome e código da sala!");
+  socket.emit('joinRoom', { roomCode, playerName });
+});
+
+document.getElementById("startGameBtn").addEventListener("click", () => {
+  if (!roomCode) return alert("Erro: Sala não definida");
+  socket.emit('startGame', roomCode);
+});
+
+document.getElementById("backToLobbyBtn").addEventListener("click", () => showScreen("lobby"));
+
+// ===============================
+// 👥 Atualização de jogadores
+// ===============================
+function updatePlayerListSocket(players) {
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+  players.forEach(p => {
+    const li = document.createElement("li");
+    li.textContent = `${p.name} — ${p.score} pts`;
+    list.appendChild(li);
+  });
 }
 
-function getPlayersArray(room) {
-  return Object.values(room.players).map(p => ({ id: p.id, name: p.name, score: p.score, correctCount: p.correctCount || 0 }));
-}
+// ===============================
+// 🔗 Eventos Socket.IO
+// ===============================
 
-function broadcastPlayers(code) {
-  const room = rooms[code];
-  if (!room) return;
-  io.to(code).emit('updatePlayers', getPlayersArray(room));
-}
+// sala criada
+socket.on('roomCreated', (code) => {
+  roomCode = code;
+  document.getElementById("roomCodeDisplay").textContent = roomCode;
+  showScreen("room");
+});
 
-// shuffle options and compute correctIndex in shuffled order
-function shuffleOptions(opts, correctIndex) {
-  const indices = opts.map((_, i) => i);
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-  const shuffled = indices.map(i => opts[i]);
-  const correctShuffled = indices.indexOf(correctIndex);
-  return { shuffled, correctShuffled, mapOriginalToShuffled: indices };
-}
+// entrou em sala
+socket.on('roomJoined', ({ roomCode: code, players }) => {
+  roomCode = code;
+  document.getElementById("roomCodeDisplay").textContent = roomCode;
+  updatePlayerListSocket(players);
+  showScreen("room");
+});
 
-// main socket logic
-io.on('connection', socket => {
-  console.log('connected', socket.id);
+// erro
+socket.on('roomError', msg => alert(msg));
 
-  socket.on('createRoom', (playerName) => {
-    const code = makeRoomCode();
-    const room = {
-      players: {},
-      started: false,
-      questions: pickQuestions(),
-      currentIndex: 0,
-      answersThisRound: {},
-      timers: {}
-    };
-    rooms[code] = room;
-    room.players[socket.id] = { id: socket.id, name: playerName, score: 0, correctCount: 0 };
-    socket.join(code);
-    socket.emit('roomCreated', code);
-    broadcastPlayers(code);
-    console.log(`Room ${code} created by ${playerName}`);
+// lista de jogadores atualizada
+socket.on('updatePlayers', players => updatePlayerListSocket(players));
+
+// contagem regressiva antes do jogo
+socket.on('preStart', ({ seconds }) => {
+  alert(`Jogo vai começar em ${seconds}s!`);
+});
+
+// ===============================
+// ❓ Perguntas
+// ===============================
+socket.on('question', (data) => {
+  answered = false;
+  showScreen("game");
+  showQuestionFromServer(data);
+});
+
+function showQuestionFromServer(qData) {
+  const optionsDiv = document.getElementById("options");
+  document.getElementById("questionText").textContent = qData.question;
+  optionsDiv.innerHTML = "";
+
+  qData.options.forEach((opt, index) => {
+    const btn = document.createElement("button");
+    btn.textContent = opt;
+    btn.className = "option-btn";
+    btn.addEventListener("click", () => selectOptionServer(index, btn));
+    optionsDiv.appendChild(btn);
   });
 
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
-    const code = (roomCode || '').toUpperCase();
-    const room = rooms[code];
-    if (!room) {
-      socket.emit('roomError', 'Sala não encontrada.');
-      return;
-    }
-    if (room.started) {
-      socket.emit('roomError', 'Jogo já iniciado na sala.');
-      return;
-    }
-    const count = Object.keys(room.players).length;
-    if (count >= ROOM_MAX_PLAYERS) {
-      socket.emit('roomError', 'Sala lotada.');
-      return;
-    }
-    room.players[socket.id] = { id: socket.id, name: playerName, score: 0, correctCount: 0 };
-    socket.join(code);
-    socket.emit('roomJoined', { roomCode: code, players: getPlayersArray(room) });
-    broadcastPlayers(code);
-    console.log(`${playerName} joined room ${code}`);
+  // timer
+  timeLeft = qData.time;
+  document.getElementById("timer").textContent = `${timeLeft}s`;
+  clearInterval(timer);
+  timer = setInterval(() => {
+    timeLeft--;
+    document.getElementById("timer").textContent = `${timeLeft}s`;
+    if (timeLeft <= 0) clearInterval(timer);
+  }, 1000);
+}
+
+function selectOptionServer(answerIndex, button) {
+  if (answered) return;
+  answered = true;
+  button.classList.add("selected");
+  socket.emit('answer', { roomCode, playerName, answerIndex });
+}
+
+// revelar resposta
+socket.on('reveal', ({ correctIndex }) => {
+  const buttons = document.querySelectorAll(".option-btn");
+  buttons.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === correctIndex) btn.classList.add("correct");
+    else if (btn.classList.contains("selected")) btn.classList.add("wrong");
+    else btn.style.opacity = "0.6";
   });
-
-  socket.on('startGame', (roomCode) => {
-    const code = (roomCode || '').toUpperCase();
-    const room = rooms[code];
-    if (!room) {
-      socket.emit('roomError', 'Sala não existe.');
-      return;
-    }
-    if (room.started) {
-      socket.emit('roomError', 'Jogo já está em andamento.');
-      return;
-    }
-    room.started = true;
-    room.currentIndex = 0;
-    // pre-start countdown
-    io.to(code).emit('preStart', { seconds: PRE_START_SECONDS });
-    // after PRE_START_SECONDS, send first question
-    setTimeout(() => {
-      sendQuestionToRoom(code);
-    }, PRE_START_SECONDS * 1000);
-    console.log(`Game started in room ${code}`);
+  // tocar som
+  buttons.forEach((btn,i)=>{
+    if(btn.classList.contains("correct") && btn.classList.contains("selected")) soundCorrect.play();
+    else if(btn.classList.contains("wrong")) soundWrong.play();
   });
+  navigator.vibrate?.([100,50,100]);
+});
 
-  // client sends answerIndex as index in the shuffled options (0..n-1)
-  socket.on('answer', ({ roomCode, playerName, answerIndex }) => {
-    const code = (roomCode || '').toUpperCase();
-    const room = rooms[code];
-    if (!room || !room.started) return;
-    // ignore if already answered this round
-    if (room.answersThisRound[socket.id] !== undefined) return;
-    room.answersThisRound[socket.id] = answerIndex;
+// mostrar resultados
+socket.on('showResults', (ranking) => {
+  showScreen("results");
+  soundVictory.play();
+  navigator.vibrate?.([200,100,200]);
 
-    // evaluate correctness using room._lastCorrectIndex (shuffled index)
-    const correctShuffled = room._lastCorrectShuffled;
-    const isCorrect = (answerIndex === correctShuffled);
+  const finalRanking = document.getElementById("finalRanking");
+  finalRanking.innerHTML = ranking.map((p,i) => `<p>${i+1}º — ${p.name}: ${p.correctCount} acertos</p>`).join("");
 
-    // award points once per player per question
-    if (isCorrect) {
-      const player = room.players[socket.id];
-      if (player) {
-        player.score = (player.score || 0) + POINTS_PER_QUESTION;
-        player.correctCount = (player.correctCount || 0) + 1;
-      }
-    }
-
-    // live update
-    broadcastPlayers(code);
-
-    // if all connected players answered, reveal early
-    const totalPlayers = Object.keys(room.players).length;
-    const answeredCount = Object.keys(room.answersThisRound).length;
-    if (answeredCount >= totalPlayers) {
-      // clear scheduled reveal if exists
-      if (room.timers.roundTimer) {
-        clearTimeout(room.timers.roundTimer);
-        room.timers.roundTimer = null;
-      }
-      // reveal now
-      io.to(code).emit('reveal', { correctIndex: room._lastCorrectShuffled });
-      // small pause then next question
-      setTimeout(() => {
-        room.currentIndex++;
-        sendQuestionToRoom(code);
-      }, 2000);
-    }
-  });
-
-  socket.on('leaveRoom', (roomCode) => {
-    const code = (roomCode || '').toUpperCase();
-    const room = rooms[code];
-    if (!room) return;
-    if (room.players[socket.id]) delete room.players[socket.id];
-    socket.leave(code);
-    broadcastPlayers(code);
-  });
-
-  socket.on('disconnect', () => {
-    // remove from any room
-    for (const code of Object.keys(rooms)) {
-      const room = rooms[code];
-      if (room && room.players[socket.id]) {
-        delete room.players[socket.id];
-        // if room becomes empty, delete it
-        if (Object.keys(room.players).length === 0) {
-          // clear timers
-          if (room.timers && room.timers.roundTimer) clearTimeout(room.timers.roundTimer);
-          delete rooms[code];
-          console.log(`Room ${code} removed (empty)`);
-        } else {
-          broadcastPlayers(code);
-        }
-      }
-    }
+  // pódio animado
+  const podiumDiv = document.getElementById("podium");
+  podiumDiv.innerHTML = "";
+  const podiumColors = ["#ffd700","#c0c0c0","#cd7f32"];
+  const podiumDelays = [0,300,600];
+  ranking.slice(0,3).forEach((p,i)=>{
+    const place = document.createElement("div");
+    place.classList.add("place");
+    if(i===0) place.classList.add("first");
+    place.style.background = podiumColors[i] || "#fff";
+    place.style.animation = `bounceIn 0.6s ease ${podiumDelays[i]}ms both`;
+    place.innerHTML = `<div style="font-size:18px;">${i+1}º</div><div>${p.name}</div><div>${p.correctCount} pts</div>`;
+    podiumDiv.appendChild(place);
   });
 });
 
-// send question flow
-function sendQuestionToRoom(code) {
-  const room = rooms[code];
-  if (!room) return;
-
-  // finished?
-  if (room.currentIndex >= room.questions.length) {
-    // prepare ranking
-    const ranking = getPlayersArray(room).map(p => {
-      const player = Object.values(room.players).find(x => x.name === p.name);
-      return {
-        name: p.name,
-        score: p.score || 0,
-        correctCount: player ? (player.correctCount || 0) : 0,
-        accuracy: player ? Math.round(((player.correctCount || 0) / room.questions.length) * 100) : 0
-      };
-    }).sort((a, b) => b.score - a.score || b.correctCount - a.correctCount);
-    io.to(code).emit('showResults', ranking);
-    // cleanup room.started maybe keep for replay
-    room.started = false;
-    return;
-  }
-
-  const q = room.questions[room.currentIndex];
-  // shuffle options and map correct index to shuffled
-  const { shuffled, correctShuffled } = shuffleOptions(q.opts, q.a);
-
-  // store for evaluation
-  room.answersThisRound = {};
-  room._lastCorrectShuffled = correctShuffled;
-
-  // send question with time = QUESTION_SECONDS
-  io.to(code).emit('question', {
-    question: q.q,
-    options: shuffled,
-    correctIndex: null, // do not reveal correct index now
-    time: QUESTION_SECONDS
-  });
-
-  // schedule reveal after time
-  room.timers.roundTimer = setTimeout(() => {
-    // reveal correctIndexShuffled to clients
-    io.to(code).emit('reveal', { correctIndex: correctShuffled });
-    // small pause then next
-    setTimeout(() => {
-      room.currentIndex++;
-      sendQuestionToRoom(code);
-    }, 2000);
-  }, QUESTION_SECONDS * 1000 + 200); // small buffer
-}
-
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// ===============================
+// 💃 Animações extras
+// ===============================
+const style = document.createElement("style");
+style.textContent = `
+@keyframes bounceIn {
+  0% { transform: translateY(80px); opacity: 0; }
+  60% { transform: translateY(-10px); opacity: 1; }
+  80% { transform: translateY(5px); }
+  100% { transform: translateY(0); }
+}`;
+document.head.appendChild(style);
