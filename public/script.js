@@ -1,273 +1,403 @@
-const socket = io();
+// CLIENT: /public/script.js
+// Multiplayer quiz client (fits the HTML & CSS above).
+(() => {
+  const socket = io();
 
-// ======= ELEMENTOS =======
-const screens = {
-  lobby: document.getElementById("lobby"),
-  game: document.getElementById("game"),
-  result: document.getElementById("result"),
-};
+  // Screens
+  const $lobby = document.getElementById('lobby');
+  const $room = document.getElementById('room');
+  const $game = document.getElementById('game');
+  const $results = document.getElementById('results');
 
-const nicknameInput = document.getElementById("nickname");
-const roomCodeInput = document.getElementById("room-code");
-const createBtn = document.getElementById("create-room");
-const joinBtn = document.getElementById("join-room");
-const playAgainBtn = document.getElementById("play-again");
+  // Lobby elems
+  const $nickname = document.getElementById('nickname');
+  const $createRoomBtn = document.getElementById('createRoomBtn');
+  const $joinRoomBtn = document.getElementById('joinRoomBtn');
+  const $roomCodeInput = document.getElementById('roomCode');
 
-const roomDisplay = document.getElementById("room-display");
-const questionText = document.getElementById("question-text");
-const optionsContainer = document.getElementById("options");
-const timerBar = document.getElementById("timer-fill");
-const rankingContainer = document.getElementById("ranking");
+  // Room elems
+  const $roomCodeDisplay = document.getElementById('roomCodeDisplay');
+  const $playerList = document.getElementById('playerList');
+  const $playerCount = document.getElementById('playerCount');
+  const $startGameBtn = document.getElementById('startGameBtn');
+  const $leaveBtn = document.getElementById('leaveBtn');
 
-const clickSound = document.getElementById("click-sound");
-const correctSound = document.getElementById("correct-sound");
-const wrongSound = document.getElementById("wrong-sound");
+  // Game elems
+  const $roundLabel = document.getElementById('roundLabel');
+  const $timerText = document.getElementById('timerText');
+  const $timerFill = document.getElementById('timerFill');
+  const $questionText = document.getElementById('questionText');
+  const $options = document.getElementById('options');
+  const $status = document.getElementById('status');
 
-let currentRoom = "";
-let playerName = "";
-let selected = false;
-let timerInterval;
-let timeLeft = 10;
-let questionIndex = 0;
-let questions = [];
-let score = 0;
-let totalAnswered = 0;
-let answeredPlayers = 0;
-let totalPlayers = 1;
+  // Results elems
+  const $podium = document.getElementById('podium');
+  const $finalRanking = document.getElementById('finalRanking');
+  const $backToLobbyBtn = document.getElementById('backToLobbyBtn');
 
-// ======= PERGUNTAS (10) =======
-questions = [
-  {
-    question: "O que é uma narração?",
-    options: [
-      "Um texto que conta uma história com personagens e tempo",
-      "Uma explicação científica sobre fatos",
-      "Uma lista de instruções ou regras",
-      "Uma descrição detalhada de um lugar"
-    ],
-    answer: 0,
-  },
-  {
-    question: "O que geralmente inicia uma narrativa?",
-    options: [
-      "Apresentação de personagens e cenário",
-      "Conclusão da história",
-      "Conflito final",
-      "Moral da história"
-    ],
-    answer: 0,
-  },
-  {
-    question: "Qual é o elemento principal da narração?",
-    options: [
-      "Personagem",
-      "Tempo verbal",
-      "Verbo de ligação",
-      "Figura de linguagem"
-    ],
-    answer: 0,
-  },
-  {
-    question: "O narrador que participa da história é chamado de:",
-    options: [
-      "Narrador-personagem",
-      "Narrador-observador",
-      "Narrador-onisciente",
-      "Narrador-coadjuvante"
-    ],
-    answer: 0,
-  },
-  {
-    question: "Qual é o tempo verbal mais comum em narrativas?",
-    options: ["Pretérito perfeito", "Futuro do presente", "Presente do indicativo", "Infinitivo"],
-    answer: 0,
-  },
-  {
-    question: "O conflito em uma narração serve para:",
-    options: [
-      "Gerar interesse e movimentar a história",
-      "Apresentar o título",
-      "Definir o espaço físico",
-      "Indicar o narrador"
-    ],
-    answer: 0,
-  },
-  {
-    question: "Qual dessas opções representa um enredo?",
-    options: [
-      "A sequência de acontecimentos da história",
-      "A descrição de um objeto",
-      "O pensamento do narrador",
-      "A moral da história"
-    ],
-    answer: 0,
-  },
-  {
-    question: "O desfecho da história é o momento em que:",
-    options: [
-      "Os conflitos são resolvidos",
-      "O narrador é apresentado",
-      "A história começa",
-      "Os personagens são descritos"
-    ],
-    answer: 0,
-  },
-  {
-    question: "Qual é a diferença entre narrador e autor?",
-    options: [
-      "O narrador conta a história; o autor cria a história",
-      "O autor conta a história; o narrador cria a história",
-      "Ambos são o mesmo",
-      "O narrador é sempre o protagonista"
-    ],
-    answer: 0,
-  },
-  {
-    question: "O clímax de uma narrativa é:",
-    options: [
-      "O ponto mais intenso do conflito",
-      "O início da história",
-      "A conclusão da moral",
-      "A descrição dos personagens"
-    ],
-    answer: 0,
-  },
-];
+  // local state
+  let myName = '';
+  let currentRoom = '';
+  let localAnswered = false;
+  let localTimer = null;
+  let localTimeLeft = 10;
+  let currentQuestionIndex = 0;
+  let currentCorrectIndex = null;
+  let lastOptionsOrder = []; // to map shuffled options to real indexes when needed
 
-// ======= FUNÇÕES =======
-function showScreen(name) {
-  Object.values(screens).forEach(s => s.classList.remove("active"));
-  screens[name].classList.add("active");
-}
+  // WebAudio simple sounds (no external files)
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function beep(freq, duration = 0.12, type = 'sine', gain = 0.08) {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = gain;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    o.start();
+    setTimeout(() => { o.stop(); }, duration * 1000);
+  }
+  function soundClick(){ beep(1000,0.06,'square',0.04); }
+  function soundCorrect(){ beep(880,0.12,'sine',0.12); setTimeout(()=>beep(1320,0.08,'sine',0.08),120); }
+  function soundWrong(){ beep(220,0.18,'sawtooth',0.12); }
 
-function shuffle(array) {
-  return array.sort(() => Math.random() - 0.5);
-}
+  // helpers: show screen
+  function showScreen(name){
+    [$lobby,$room,$game,$results].forEach(s => s.classList.remove('active'));
+    if(name === 'lobby') $lobby.classList.add('active');
+    if(name === 'room') $room.classList.add('active');
+    if(name === 'game') $game.classList.add('active');
+    if(name === 'results') $results.classList.add('active');
+  }
 
-function playSound(audio) {
-  audio.currentTime = 0;
-  audio.play();
-}
-
-function startTimer() {
-  clearInterval(timerInterval);
-  timeLeft = 10;
-  timerBar.style.width = "100%";
-  timerInterval = setInterval(() => {
-    timeLeft--;
-    timerBar.style.width = `${(timeLeft / 10) * 100}%`;
-    if (timeLeft <= 0) {
-      clearInterval(timerInterval);
-      if (!selected) {
-        disableOptions();
-        socket.emit("playerAnswered", { room: currentRoom, player: playerName, correct: false });
-      }
+  // helpers: shuffle array and return mapping
+  function shuffleWithMap(arr){
+    const indices = arr.map((_,i)=>i);
+    for(let i=indices.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
     }
-  }, 1000);
-}
+    const shuffled = indices.map(i => arr[i]);
+    return {shuffled, indices};
+  }
 
-function disableOptions() {
-  document.querySelectorAll(".option").forEach(btn => btn.classList.add("disabled"));
-}
+  // update players list UI
+  function renderPlayers(players){
+    $playerList.innerHTML = '';
+    players.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = `${p.name} — ${p.score ?? 0} pts`;
+      $playerList.appendChild(li);
+    });
+    $playerCount.textContent = players.length;
+  }
 
-// ======= EVENTOS DO LOBBY =======
-createBtn.onclick = () => {
-  playerName = nicknameInput.value.trim();
-  if (!playerName) return alert("Digite seu nome!");
-  playSound(clickSound);
-  socket.emit("createRoom", playerName);
-};
+  // LOBBY events
+  $createRoomBtn.addEventListener('click', () => {
+    myName = $nickname.value.trim();
+    if(!myName) return alert('Digite seu nome!');
+    soundClick();
+    socket.emit('createRoom', myName);
+  });
 
-joinBtn.onclick = () => {
-  playerName = nicknameInput.value.trim();
-  const room = roomCodeInput.value.trim().toUpperCase();
-  if (!playerName || !room) return alert("Preencha todos os campos!");
-  playSound(clickSound);
-  socket.emit("joinRoom", { playerName, room });
-};
+  $joinRoomBtn.addEventListener('click', () => {
+    myName = $nickname.value.trim();
+    const code = $roomCodeInput.value.trim().toUpperCase();
+    if(!myName || !code) return alert('Preencha nome e código da sala!');
+    soundClick();
+    socket.emit('joinRoom', { roomCode: code, playerName: myName });
+  });
 
-playAgainBtn.onclick = () => {
-  location.reload();
-};
+  $leaveBtn.addEventListener('click', () => {
+    if(currentRoom) socket.emit('leaveRoom', currentRoom);
+    currentRoom = '';
+    myName = '';
+    $nickname.value = '';
+    $roomCodeInput.value = '';
+    showScreen('lobby');
+  });
 
-// ======= SOCKET.IO =======
-socket.on("roomCreated", room => {
-  currentRoom = room;
-  roomDisplay.textContent = "Sala: " + room;
-  showScreen("game");
-  socket.emit("startGame", { room, questions });
-});
+  $startGameBtn.addEventListener('click', () => {
+    if(!currentRoom) return;
+    socket.emit('startGame', currentRoom);
+  });
 
-socket.on("joinedRoom", room => {
-  currentRoom = room;
-  roomDisplay.textContent = "Sala: " + room;
-  showScreen("game");
-});
+  $backToLobbyBtn.addEventListener('click', () => {
+    // after game ends return to lobby (client-side)
+    currentRoom = '';
+    showScreen('lobby');
+  });
 
-socket.on("startQuestion", qData => {
-  showScreen("game");
-  renderQuestion(qData);
-});
+  // SOCKET handlers
+  socket.on('roomCreated', (code) => {
+    currentRoom = code;
+    $roomCodeDisplay.textContent = code;
+    showScreen('room');
+    // request current players list
+    socket.emit('getPlayers', code);
+  });
 
-socket.on("allAnswered", () => {
-  revealCorrect();
-});
+  socket.on('roomJoined', ({ roomCode, players }) => {
+    currentRoom = roomCode;
+    $roomCodeDisplay.textContent = roomCode;
+    renderPlayers(players || []);
+    showScreen('room');
+  });
 
-socket.on("gameOver", ranking => {
-  renderRanking(ranking);
-  showScreen("result");
-});
+  socket.on('roomError', (msg) => {
+    alert(msg);
+  });
 
-// ======= RENDER PERGUNTAS =======
-function renderQuestion(qData) {
-  selected = false;
-  questionText.textContent = qData.question;
-  optionsContainer.innerHTML = "";
+  socket.on('updatePlayers', (players) => {
+    renderPlayers(players || []);
+  });
 
-  const randomized = shuffle([...qData.options]);
-  randomized.forEach(opt => {
-    const btn = document.createElement("div");
-    btn.textContent = opt;
-    btn.classList.add("option");
-    btn.onclick = () => {
-      if (selected) return;
-      selected = true;
-      disableOptions();
+  socket.on('preStart', ({ seconds }) => {
+    // show simple countdown in question area before game (client uses server countdown)
+    showScreen('game');
+    $questionText.textContent = `Jogo começa em ${seconds}...`;
+    $options.innerHTML = '';
+    $status.textContent = '';
+    $timerText.textContent = `${seconds}s`;
+    $timerFill.style.width = '100%';
+    // local short countdown handled by server; not starting client timer here
+  });
 
-      const isCorrect = opt === qData.options[qData.answer];
-      if (isCorrect) {
-        btn.classList.add("correct");
-        playSound(correctSound);
+  // Accept either 'question' or 'gameStarted' payloads for compatibility
+  socket.on('question', (data) => {
+    // data: { question, options[], correctIndex?, time? }
+    setupQuestion(data);
+  });
+  socket.on('gameStarted', (data) => {
+    // compatibility: server may emit 'gameStarted' with first question
+    if(data && (data.question || data.questionText)) setupQuestion(data);
+  });
+
+  socket.on('reveal', (data) => {
+    // data: { correctIndex } - correctIndex refers to options array as sent by server.
+    revealCorrectFromServer(data);
+  });
+
+  socket.on('showResults', (ranking) => {
+    renderResults(ranking || []);
+    showScreen('results');
+  });
+
+  // When server signals all answered (compatibility)
+  socket.on('allAnswered', () => {
+    revealCorrectFromServer(); // if server didn't send index separately, rely on currentCorrectIndex
+  });
+
+  // SEND answer helper (emit multiple event names for compatibility)
+  function sendAnswer(index){
+    // emit answer in several possible event names
+    const payload = { roomCode: currentRoom, playerName: myName, answerIndex: index };
+    socket.emit('answer', payload);
+    socket.emit('playerAnswered', { room: currentRoom, player: myName, correct: null }); // best-effort
+  }
+
+  // QUESTION render & logic
+  function setupQuestion(data){
+    // normalize
+    const qText = data.question || data.questionText || '';
+    const optionsArr = data.options || data.opts || [];
+    const serverCorrectIndex = (data.correctIndex !== undefined) ? data.correctIndex : (data.correct !== undefined ? data.correct : null);
+    const time = data.time || 10;
+
+    // store mapping: we will shuffle options client-side (unless server already shuffled)
+    const { shuffled, indices } = shuffleWithMap(optionsArr);
+    lastOptionsOrder = indices; // indices[i] gives original index of shuffled[i]
+
+    // if server provided correctIndex in server options order, we need to map to shuffled index:
+    if(serverCorrectIndex !== null && serverCorrectIndex !== undefined){
+      // serverCorrectIndex = index in optionsArr (original)
+      // find where original index sits in shuffled
+      currentCorrectIndex = shuffled.findIndex((opt, i) => indices[i] === serverCorrectIndex);
+      // if not found fallback to null
+      if(currentCorrectIndex === -1) currentCorrectIndex = null;
+    } else {
+      // server didn't tell correctIndex; we will reveal based on server later (server must send reveal with correct index),
+      // but we can keep mapping so if server later sends original index we know:
+      currentCorrectIndex = null;
+    }
+
+    // UI populate
+    $roundLabel.textContent = `Pergunta ${ (data.index !== undefined ? data.index+1 : currentQuestionIndex+1) } / 10`;
+    $questionText.textContent = qText;
+    $options.innerHTML = '';
+    $status.textContent = '';
+    localAnswered = false;
+
+    shuffled.forEach((optText, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option';
+      btn.setAttribute('role','listitem');
+      btn.textContent = optText;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.onclick = () => {
+        if(localAnswered) return;
+        localAnswered = true;
+        // mark selection immediate green/red for *this player*
+        // we cannot mark the "correct option" for everyone until server reveals,
+        // but we must color player's selected button green if it matches server-provided correctIndex (if known),
+        // else color immediate local feedback (user asked: green for correct and red for wrong when they mark)
+        const chosenIndex = i;
+        // map chosenIndex to original option index:
+        const originalIndex = typeof lastOptionsOrder[i]==='number' ? lastOptionsOrder[i] : i;
+        // If server included correctIndex as original index, we can evaluate immediately:
+        let answeredCorrect = false;
+        if(serverCorrectIndex !== null && serverCorrectIndex !== undefined){
+          answeredCorrect = (originalIndex === serverCorrectIndex);
+        } else {
+          // server didn't tell; we will optimistically wait for server reveal to mark global correct,
+          // but user asked for immediate color: we will color chosen button green if serverCorrectIndex known, else greyed until reveal
+          answeredCorrect = null;
+        }
+
+        if(answeredCorrect === true) {
+          btn.classList.add('correct');
+          try{ soundCorrect(); }catch(e){}
+        } else if(answeredCorrect === false) {
+          btn.classList.add('wrong');
+          try{ soundWrong(); }catch(e){}
+        } else {
+          // unknown — temporarily mark as selected visually (light)
+          btn.style.boxShadow = '0 0 0 3px rgba(0,0,0,0.03) inset';
+          try{ soundClick(); }catch(e){}
+        }
+
+        // disable all options visually for this client
+        Array.from($options.children).forEach(c => c.disabled = true);
+
+        // send answer to server — send the original index if we can determine it
+        sendAnswer(originalIndex);
+      };
+      $options.appendChild(btn);
+    });
+
+    // start visual timer but server-driven time is authoritative
+    startLocalTimer(time);
+  }
+
+  // local timer (visual only) — server handles authoritative timeout & reveal
+  function startLocalTimer(seconds){
+    clearInterval(localTimer);
+    localTimeLeft = seconds;
+    $timerText.textContent = `${localTimeLeft}s`;
+    $timerFill.style.width = '100%';
+    localTimer = setInterval(() => {
+      localTimeLeft--;
+      if(localTimeLeft < 0) localTimeLeft = 0;
+      $timerText.textContent = `${localTimeLeft}s`;
+      $timerFill.style.width = `${(localTimeLeft/seconds)*100}%`;
+      if(localTimeLeft <= 0) {
+        clearInterval(localTimer);
+        // inform server we timed out (server may already handle this)
+        socket.emit('timeout', { roomCode: currentRoom, playerName: myName });
+        // disable inputs for this client
+        Array.from($options.children).forEach(c => c.disabled = true);
+        // status
+        $status.textContent = 'Tempo esgotado — aguardando outros jogadores...';
+      }
+    }, 1000);
+  }
+
+  // reveal correct option according to server
+  function revealCorrectFromServer(payload){
+    // payload may be { correctIndex } where correctIndex refers to server's options original order
+    // if payload.correctIndex provided, map to current shuffled index:
+    let serverCorrect = null;
+    if(payload && (payload.correctIndex!==undefined && payload.correctIndex!==null)){
+      // serverCorrectIndex is original index
+      const orig = payload.correctIndex;
+      const shuffledIndex = lastOptionsOrder.findIndex(x => x === orig);
+      serverCorrect = shuffledIndex >= 0 ? shuffledIndex : null;
+    } else if(payload && payload.correct !== undefined){
+      // alternative naming
+      const orig = payload.correct;
+      const shuffledIndex = lastOptionsOrder.findIndex(x => x === orig);
+      serverCorrect = shuffledIndex >= 0 ? shuffledIndex : null;
+    } else {
+      // fallback to currentCorrectIndex if we computed earlier from server's provided correctIndex
+      serverCorrect = currentCorrectIndex;
+    }
+
+    // color correct/wrong globally
+    const children = Array.from($options.children);
+    children.forEach((btn, i) => {
+      btn.classList.remove('disabled');
+      btn.disabled = true;
+      if(serverCorrect !== null && i === serverCorrect){
+        btn.classList.add('correct');
       } else {
-        btn.classList.add("wrong");
-        playSound(wrongSound);
+        // if a button was previously marked wrong by the user, keep it wrong; else leave as is
+        if(!btn.classList.contains('wrong')) {
+          // optionally dim
+          // btn.style.opacity = '0.9';
+        }
       }
+    });
 
-      socket.emit("playerAnswered", {
-        room: currentRoom,
-        player: playerName,
-        correct: isCorrect,
-      });
-    };
-    optionsContainer.appendChild(btn);
-  });
+    $status.textContent = 'Resposta correta mostrada. Próxima pergunta em breve...';
+  }
 
-  startTimer();
-}
+  // final results render
+  function renderResults(ranking){
+    $podium.innerHTML = '';
+    $finalRanking.innerHTML = '';
 
-function revealCorrect() {
-  document.querySelectorAll(".option").forEach(btn => {
-    if (btn.textContent === questions[questionIndex].options[questions[questionIndex].answer]) {
-      btn.classList.add("correct");
+    if(ranking.length > 0){
+      // podium (top 3)
+      const top1 = ranking[0];
+      const top2 = ranking[1];
+      const top3 = ranking[2];
+      $podium.innerHTML = `
+        <div class="place second">${top2? '🥈 '+top2.name + '<br>' + (top2.score||0) + ' pts' : ''}</div>
+        <div class="place first">${top1? '🥇 '+top1.name + '<br>' + (top1.score||0) + ' pts' : ''}</div>
+        <div class="place third">${top3? '🥉 '+top3.name + '<br>' + (top3.score||0) + ' pts' : ''}</div>
+      `;
     }
-  });
-}
 
-function renderRanking(ranking) {
-  rankingContainer.innerHTML = "<h3>Ranking Final</h3>";
-  ranking.forEach((p, i) => {
-    const el = document.createElement("p");
-    el.textContent = `${i + 1}. ${p.name} — ${p.score} pts`;
-    rankingContainer.appendChild(el);
+    // full sorted ranking, organized
+    const sorted = ranking.slice().sort((a,b)=> b.score - a.score || a.name.localeCompare(b.name));
+    const wrapper = document.createElement('div');
+    wrapper.style.marginTop = '12px';
+    wrapper.style.textAlign = 'left';
+    sorted.forEach((p, idx) => {
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.padding = '8px';
+      row.style.background = 'rgba(255,255,255,0.92)';
+      row.style.marginBottom = '8px';
+      row.style.borderRadius = '8px';
+      row.innerHTML = `<strong>${idx+1}º ${p.name}</strong><span>${p.score} pts</span>`;
+      $finalRanking.appendChild(row);
+    });
+  }
+
+  // safety: if server doesn't reveal, after small buffer we still reveal using server-provided mapping (if possible)
+  socket.on('noRevealFallback', () => {
+    revealCorrectFromServer({});
   });
-}
+
+  // compatibility: sometimes server expects 'getPlayers' event
+  socket.emit('clientReady', { });
+
+  // request initial state (if already in a room, server might send updatePlayers)
+  // NOTE: all emits below are best-effort and duplicate events are harmless
+
+  // When server tells client what to do (debug)
+  socket.on('debug', (d) => console.log('debug:',d));
+
+  // Ensure audio context resumes on user gesture (some mobile browsers block autoplay)
+  document.addEventListener('click', ()=> {
+    if(audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+  }, { once: true });
+
+  // set initial screen
+  showScreen('lobby');
+
+})();
