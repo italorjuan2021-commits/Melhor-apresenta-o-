@@ -11,25 +11,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
 
-const ROOM_MAX_PLAYERS = 50;
 const QUESTION_SECONDS = 8;
-const POINTS_PER_QUESTION = 1;
+const POINTS_PER_QUESTION = 10;
 
 // Perguntas
 const QUESTION_POOL = [
-  { q: "O que é uma narração?", opts: ["Texto descritivo", "Texto que conta uma história", "Lista de instruções", "Resumo"], a: 1 },
-  { q: "Quem é o narrador?", opts: ["Autor", "Voz que conta a história", "Leitor", "Editor"], a: 1 },
-  { q: "O que é enredo?", opts: ["Sequência de acontecimentos", "Local da história", "Falas dos personagens", "Tema"], a: 0 },
-  { q: "O que é clímax?", opts: ["Início da história", "Ponto de maior tensão", "Resumo final", "Descrição do local"], a: 1 },
-  { q: "Qual elemento NÃO é essencial em uma narrativa?", opts: ["Enredo", "Personagens", "Estrutura de rimas", "Espaço"], a: 2 },
-  { q: "O que é o espaço na narração?", opts: ["Lugar onde acontece", "Tempo verbal", "Personagem secundário", "Tema"], a: 0 },
-  { q: "O narrador onisciente:", opts: ["Desconhece os pensamentos", "Sabe tudo sobre personagens", "É personagem principal", "Sempre usa 'eu'"], a: 1 },
-  { q: "O que é ponto de vista?", opts: ["Forma de contar a história", "Cor do livro", "Número de páginas", "Nome do autor"], a: 0 },
-  { q: "Narrador em primeira pessoa usa:", opts: ["'ele' ou 'ela'", "'nós'", "'eu'", "'vós'"], a: 2 },
-  { q: "Função principal da narração:", opts: ["Argumentar", "Contar história com começo, meio e fim", "Listar dados", "Dar instruções"], a: 1 }
+  { q: "O que é uma narração?", opts: ["Um texto que conta uma história com personagens e tempo", "Um texto que descreve objetos ou lugares", "Um texto que defende uma opinião", "Um texto que explica um conceito"], a: 0 },
+  { q: "Qual é o principal elemento da narração?", opts: ["O narrador", "O autor", "O título", "O tema"], a: 0 },
+  { q: "O que é o enredo?", opts: ["A sequência de ações e acontecimentos da história", "O espaço onde ocorre a história", "O conflito dos personagens", "A fala dos personagens"], a: 0 },
+  { q: "Quem conta a história em um texto narrativo?", opts: ["O narrador", "O protagonista", "O autor", "O leitor"], a: 0 },
+  { q: "Qual desses é um tipo de narrador?", opts: ["Narrador-personagem", "Narrador-ilustrador", "Narrador-público", "Narrador-anônimo"], a: 0 },
+  { q: "O que é o clímax na narrativa?", opts: ["O momento de maior tensão da história", "O início da história", "A conclusão da história", "A descrição do espaço"], a: 0 },
+  { q: "O que representa o desfecho?", opts: ["A parte final onde o conflito é resolvido", "O começo da história", "O conflito central", "A fala dos personagens"], a: 0 },
+  { q: "Qual é a função do tempo na narração?", opts: ["Situar os acontecimentos", "Descrever personagens", "Defender uma tese", "Apresentar um argumento"], a: 0 },
+  { q: "O espaço narrativo representa:", opts: ["O lugar onde a história se passa", "O tempo dos acontecimentos", "O ponto de vista do narrador", "O tema principal"], a: 0 },
+  { q: "Quem é o protagonista?", opts: ["O personagem principal da história", "O narrador observador", "O antagonista", "O autor do texto"], a: 0 }
 ];
 
-// Estrutura das salas
 const rooms = {};
 
 function makeRoomCode() {
@@ -47,19 +45,83 @@ function shuffleOptions(opts, correctIndex) {
   return { shuffled, correctShuffled };
 }
 
-function broadcastPlayers(code) {
-  const room = rooms[code];
-  if (!room) return;
-  io.to(code).emit('updatePlayers', Object.values(room.players));
-}
+io.on('connection', socket => {
 
-function sendQuestionToRoom(code) {
+  socket.on('createRoom', playerName => {
+    const code = makeRoomCode();
+    rooms[code] = {
+      players: { [socket.id]: { name: playerName, score: 0 } },
+      started: false,
+      questions: QUESTION_POOL.slice(),
+      currentIndex: 0,
+      answers: {},
+      timers: {}
+    };
+    socket.join(code);
+    socket.emit('roomCreated', code);
+    io.to(code).emit('updatePlayers', Object.values(rooms[code].players));
+  });
+
+  socket.on('joinRoom', ({ roomCode, playerName }) => {
+    const room = rooms[roomCode];
+    if (!room) {
+      socket.emit('roomError', 'Sala não existe');
+      return;
+    }
+    room.players[socket.id] = { name: playerName, score: 0 };
+    socket.join(roomCode);
+    socket.emit('roomJoined', { roomCode });
+    io.to(roomCode).emit('updatePlayers', Object.values(room.players));
+  });
+
+  socket.on('startGame', roomCode => {
+    const room = rooms[roomCode];
+    if (!room || room.started) return;
+    room.started = true;
+    room.currentIndex = 0;
+    sendQuestion(roomCode);
+  });
+
+  socket.on('answer', ({ roomCode, answerIndex }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+    if (room.answers[socket.id] !== undefined) return;
+
+    room.answers[socket.id] = answerIndex;
+
+    const correct = answerIndex === room.correctShuffled;
+    if (correct) room.players[socket.id].score += POINTS_PER_QUESTION;
+
+    // atualizar ranking para todos
+    io.to(roomCode).emit('updatePlayers', Object.values(room.players));
+
+    if (Object.keys(room.answers).length === Object.keys(room.players).length) {
+      clearTimeout(room.timers.roundTimer);
+      io.to(roomCode).emit('reveal', { correctIndex: room.correctShuffled });
+      setTimeout(() => {
+        room.currentIndex++;
+        sendQuestion(roomCode);
+      }, 1000);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    for (const code in rooms) {
+      const room = rooms[code];
+      if (room.players[socket.id]) delete room.players[socket.id];
+      io.to(code).emit('updatePlayers', Object.values(room.players));
+    }
+  });
+
+});
+
+function sendQuestion(code) {
   const room = rooms[code];
   if (!room) return;
+
   if (room.currentIndex >= room.questions.length) {
     const ranking = Object.values(room.players)
-      .sort((a, b) => b.score - a.score)
-      .map(p => ({ name: p.name, score: p.score }));
+      .sort((a, b) => b.score - a.score);
     io.to(code).emit('showResults', ranking);
     room.started = false;
     return;
@@ -67,78 +129,22 @@ function sendQuestionToRoom(code) {
 
   const q = room.questions[room.currentIndex];
   const { shuffled, correctShuffled } = shuffleOptions(q.opts, q.a);
-  room._lastCorrectShuffled = correctShuffled;
-  room.answersThisRound = {};
-  io.to(code).emit('question', { question: q.q, options: shuffled, time: QUESTION_SECONDS });
+  room.correctShuffled = correctShuffled;
+  room.answers = {};
+
+  io.to(code).emit('question', {
+    question: q.q,
+    options: shuffled,
+    time: QUESTION_SECONDS
+  });
 
   room.timers.roundTimer = setTimeout(() => {
     io.to(code).emit('reveal', { correctIndex: correctShuffled });
     setTimeout(() => {
       room.currentIndex++;
-      sendQuestionToRoom(code);
-    }, 2000);
+      sendQuestion(code);
+    }, 1000);
   }, QUESTION_SECONDS * 1000);
 }
-
-io.on('connection', socket => {
-  socket.on('createRoom', (playerName) => {
-    const code = makeRoomCode();
-    rooms[code] = {
-      players: { [socket.id]: { id: socket.id, name: playerName, score: 0 } },
-      started: false,
-      questions: QUESTION_POOL,
-      currentIndex: 0,
-      timers: {}
-    };
-    socket.join(code);
-    socket.emit('roomCreated', code);
-    broadcastPlayers(code);
-  });
-
-  socket.on('joinRoom', ({ roomCode, playerName }) => {
-    const code = roomCode.toUpperCase();
-    const room = rooms[code];
-    if (!room) { socket.emit('roomError', 'Sala não encontrada'); return; }
-    room.players[socket.id] = { id: socket.id, name: playerName, score: 0 };
-    socket.join(code);
-    socket.emit('roomJoined', { roomCode: code });
-    broadcastPlayers(code);
-  });
-
-  socket.on('startGame', (code) => {
-    const room = rooms[code];
-    if (!room) return;
-    room.started = true;
-    room.currentIndex = 0;
-    sendQuestionToRoom(code);
-  });
-
-  socket.on('answer', ({ roomCode, answerIndex }) => {
-    const room = rooms[roomCode];
-    if (!room) return;
-    if (room.answersThisRound[socket.id] !== undefined) return;
-    room.answersThisRound[socket.id] = answerIndex;
-
-    const correct = answerIndex === room._lastCorrectShuffled;
-    if (correct) room.players[socket.id].score += POINTS_PER_QUESTION;
-    broadcastPlayers(roomCode);
-
-    if (Object.keys(room.answersThisRound).length === Object.keys(room.players).length) {
-      clearTimeout(room.timers.roundTimer);
-      io.to(roomCode).emit('reveal', { correctIndex: room._lastCorrectShuffled });
-      setTimeout(() => {
-        room.currentIndex++;
-        sendQuestionToRoom(roomCode);
-      }, 2000);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    for (const code in rooms) {
-      if (rooms[code].players[socket.id]) delete rooms[code].players[socket.id];
-      broadcastPlayers(code);
-    }
-  });
-});
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
