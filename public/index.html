@@ -2,55 +2,67 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>A NARRAÇÃO - Quiz Multiplayer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎬 A NARRAÇÃO - Quiz Multiplayer</title>
   <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="app">
+
+    <!-- HEADER -->
     <header class="main-header">
       <h1 class="game-title">🎬 A NARRAÇÃO</h1>
       <p class="credits">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
     </header>
 
+    <!-- LOBBY -->
     <section id="lobby" class="screen active">
       <div class="card">
         <h2>Crie ou entre em uma sala</h2>
+        <p class="muted">Junte seus colegas e competam — cada pergunta vale 10 pontos.</p>
         <input id="nickname" placeholder="Seu nome" type="text" />
         <input id="roomCode" placeholder="Código da sala (deixe vazio para criar)" type="text" />
         <div class="row">
-          <button id="createRoomBtn">Criar Sala</button>
-          <button id="joinRoomBtn">Entrar</button>
+          <button id="createRoomBtn" class="btn primary">Criar Sala</button>
+          <button id="joinRoomBtn" class="btn outline">Entrar</button>
         </div>
       </div>
     </section>
 
+    <!-- ROOM -->
     <section id="room" class="screen">
       <div class="card">
         <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
-        <ul id="playerList"></ul>
-        <button id="startGameBtn">Iniciar jogo</button>
+        <h3>Jogadores</h3>
+        <ul id="playerList" class="player-list"></ul>
+        <button id="startGameBtn" class="btn primary">Iniciar jogo</button>
       </div>
     </section>
 
+    <!-- GAME -->
     <section id="game" class="screen">
-      <div class="card">
-        <div id="roundLabel">Rodada 1</div>
-        <div id="timer">10s</div>
-        <div id="questionText">Carregando pergunta...</div>
-        <div id="options"></div>
-        <div id="roundStatus"></div>
+      <div class="card game-card">
+        <div class="game-header">
+          <div id="roundLabel" class="round-label">Rodada 1</div>
+          <div id="timer" class="timer">10s</div>
+        </div>
+        <div id="questionText" class="question">Carregando pergunta...</div>
+        <div id="options" class="options-grid"></div>
+        <div id="roundStatus" class="round-status"></div>
       </div>
     </section>
 
+    <!-- RESULTS -->
     <section id="results" class="screen">
       <div class="card">
         <h2>🏆 Resultado Final</h2>
-        <div id="podium"></div>
-        <div id="finalRanking"></div>
-        <button id="backToLobbyBtn">Voltar ao Início</button>
+        <div id="podium" class="podium"></div>
+        <div id="finalRanking" class="final-ranking"></div>
+        <button id="backToLobbyBtn" class="btn primary">Voltar ao Início</button>
       </div>
     </section>
+
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
