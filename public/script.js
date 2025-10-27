@@ -13,6 +13,7 @@ const socket = io();
 let questions = [];
 let currentQuestion = 0;
 let answered = false;
+let waitingForOthers = false;
 let timer;
 let timeLeft = 10;
 let playerName = "";
@@ -32,7 +33,7 @@ function showScreen(id) {
 document.getElementById("createRoomBtn").addEventListener("click", () => {
   playerName = document.getElementById("nickname").value.trim();
   if (!playerName) return alert("Digite seu nome!");
-  socket.emit("createRoom", playerName);
+  socket.emit("createRoom", { playerName });
 });
 
 document.getElementById("joinRoomBtn").addEventListener("click", () => {
@@ -42,25 +43,23 @@ document.getElementById("joinRoomBtn").addEventListener("click", () => {
   socket.emit("joinRoom", { playerName, roomCode });
 });
 
-// ===============================
+// Sala criada
+socket.on("roomCreated", code => {
+  roomCode = code;
+  document.getElementById("roomCodeDisplay").textContent = roomCode;
+  showScreen("room");
+});
+
 // Atualiza lista de jogadores
 socket.on("updatePlayers", players => {
   roomPlayers = players;
   const list = document.getElementById("playerList");
   list.innerHTML = "";
-  Object.values(players).forEach(p => {
+  Object.entries(players).forEach(([p, s]) => {
     const li = document.createElement("li");
-    li.textContent = `${p.name} — ${p.score} pts`;
+    li.textContent = `${p} — ${s} pts`;
     list.appendChild(li);
   });
-});
-
-// ===============================
-// Recebe código da sala criada
-socket.on("roomCreated", code => {
-  roomCode = code;
-  document.getElementById("roomCodeDisplay").textContent = roomCode;
-  showScreen("room");
 });
 
 // ===============================
@@ -69,105 +68,118 @@ document.getElementById("startGameBtn").addEventListener("click", () => {
   socket.emit("startGame", roomCode);
 });
 
-// ===============================
-// Recebe pergunta do servidor
-socket.on("startQuestion", data => {
-  questions[currentQuestion] = data; // garante compatibilidade
+// Recebe perguntas do servidor
+socket.on("gameStarted", serverQuestions => {
+  questions = serverQuestions;
+  currentQuestion = 0;
   showScreen("game");
-  displayQuestion(data);
-  startTimer(data.time || 10);
+  nextQuestion();
 });
 
 // ===============================
-// ⏱️ Temporizador controlado pelo servidor
-function startTimer(duration) {
-  clearInterval(timer);
-  timeLeft = duration;
+// ❓ Exibir pergunta
+function nextQuestion() {
+  if (currentQuestion >= questions.length) {
+    socket.emit("endGame", { roomCode });
+    return;
+  }
+
+  answered = false;
+  waitingForOthers = false;
+  timeLeft = 10;
+  document.getElementById("roundLabel").textContent = `Pergunta ${currentQuestion + 1}`;
   document.getElementById("timer").textContent = `${timeLeft}s`;
+  document.getElementById("roundStatus").textContent = "";
+
+  const q = questions[currentQuestion];
+  const shuffledOptions = shuffle([...q.options]);
+  const optionsDiv = document.getElementById("options");
+  document.getElementById("questionText").textContent = q.question;
+  optionsDiv.innerHTML = "";
+
+  shuffledOptions.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.textContent = opt;
+    btn.className = "option-btn";
+    btn.addEventListener("click", () => selectOption(btn, opt, q));
+    optionsDiv.appendChild(btn);
+  });
+
+  startTimer();
+}
+
+// ===============================
+// ⏱️ Temporizador
+function startTimer() {
+  clearInterval(timer);
   timer = setInterval(() => {
     timeLeft--;
     document.getElementById("timer").textContent = `${timeLeft}s`;
     if (timeLeft <= 0) {
       clearInterval(timer);
-      if (!answered) autoTimeout();
+      if (!answered) {
+        // marca como incorreto
+        socket.emit("answer", { roomCode, playerName, correct: false });
+        waitingForOthers = true;
+        document.getElementById("roundStatus").textContent = "Aguardando outros jogadores...";
+        revealAnswer(false, false);
+      }
     }
   }, 1000);
 }
 
 // ===============================
-// ❌ Auto timeout
-function autoTimeout() {
-  answered = true;
-  document.getElementById("roundStatus").textContent = "Tempo esgotado!";
-  revealAnswer(null); // não marcou ninguém
-  socket.emit("answer", { roomCode, playerName, correct: false });
-}
-
-// ===============================
-// 🟩 Exibir pergunta e alternativas
-function displayQuestion(qData) {
-  answered = false;
-  const optionsDiv = document.getElementById("options");
-  document.getElementById("questionText").textContent = qData.question;
-  document.getElementById("roundLabel").textContent = `Pergunta ${currentQuestion + 1}`;
-  document.getElementById("roundStatus").textContent = "";
-  optionsDiv.innerHTML = "";
-
-  const shuffled = shuffle([...qData.options]);
-  shuffled.forEach(opt => {
-    const btn = document.createElement("button");
-    btn.className = "option-btn";
-    btn.textContent = opt;
-    btn.addEventListener("click", () => selectOption(btn, opt, qData));
-    optionsDiv.appendChild(btn);
-  });
-}
-
-// ===============================
-// 🖱️ Selecionar resposta
-function selectOption(btn, selected, qData) {
+// 🟩 Selecionar resposta
+function selectOption(button, selected, q) {
   if (answered) return;
   answered = true;
   clearInterval(timer);
 
-  const correct = selected === qData.options[qData.correct];
-  btn.classList.add("selected");
+  const correct = selected === q.options[q.answer];
+  button.classList.add("selected");
   if (correct) { soundCorrect.play(); navigator.vibrate?.(120); }
   else { soundWrong.play(); navigator.vibrate?.([60, 40, 60]); }
 
+  waitingForOthers = true;
   document.getElementById("roundStatus").textContent = "Aguardando outros jogadores...";
+
   socket.emit("answer", { roomCode, playerName, correct });
-  revealAnswer(correct);
+  revealAnswer(correct, false);
 }
 
 // ===============================
 // 🎯 Revelar resposta
-function revealAnswer(correct) {
+function revealAnswer(correct = false, autoAdvance = true) {
   const buttons = document.querySelectorAll(".option-btn");
   const q = questions[currentQuestion];
   buttons.forEach(btn => {
     btn.disabled = true;
-    if (q && btn.textContent === q.options[q.correct]) btn.classList.add("correct");
+    if (btn.textContent === q.options[q.answer]) btn.classList.add("correct");
     else if (btn.classList.contains("selected")) btn.classList.add("wrong");
     else btn.style.opacity = "0.6";
   });
 }
 
 // ===============================
-// Servidor manda avançar
-socket.on("timeUp", data => revealAnswer(true));
-socket.on("nextQuestion", () => { currentQuestion++; });
-socket.on("showResults", players => {
+// Servidor avisa que todos responderam ou tempo acabou
+socket.on("nextQuestion", () => {
+  currentQuestion++;
+  nextQuestion();
+});
+
+// ===============================
+// 🏁 Pódio
+socket.on("gameEnded", players => {
   showScreen("results");
   soundVictory.play();
   navigator.vibrate?.([200, 100, 200]);
 
+  const ranking = Object.entries(players).sort((a, b) => b[1] - a[1]);
   const podiumDiv = document.getElementById("podium");
   podiumDiv.innerHTML = "";
   const podiumColors = ["#ffd700", "#c0c0c0", "#cd7f32"];
   const podiumDelays = [0, 300, 600];
 
-  const ranking = Object.entries(players).sort((a, b) => b[1] - a[1]);
   ranking.slice(0, 3).forEach(([p, s], i) => {
     const place = document.createElement("div");
     place.classList.add("place");
@@ -182,7 +194,6 @@ socket.on("showResults", players => {
   finalRanking.innerHTML = ranking.map(([p, s], i) => `<p>${i + 1}º — ${p}: ${s} acertos</p>`).join("");
 });
 
-// ===============================
 // Voltar ao lobby
 document.getElementById("backToLobbyBtn").addEventListener("click", () => showScreen("lobby"));
 
