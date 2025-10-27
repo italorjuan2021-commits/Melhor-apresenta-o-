@@ -1,76 +1,156 @@
-
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>🎬 A NARRAÇÃO - Quiz Multiplayer</title>
+
+  <!-- Estilo principal -->
   <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Fonte -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Meta para tema (cor do navegador em mobile) -->
+  <meta name="theme-color" content="#071029"/>
 </head>
 <body>
-  <div id="app">
+  <div id="app" class="app-root">
+
+    <!-- background decorativo (animação) -->
+    <div class="bg-decor">
+      <span class="orb orb--big"></span>
+      <span class="orb orb--mid"></span>
+      <span class="orb orb--small"></span>
+    </div>
 
     <!-- HEADER -->
     <header class="main-header">
-      <h1 class="game-title">🎬 A NARRAÇÃO</h1>
-      <p class="credits">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
+      <div class="header-inner">
+        <div class="logo">
+          <div class="logo-badge">🎬</div>
+          <div>
+            <h1 class="game-title">A NARRAÇÃO</h1>
+            <div class="subtitle">Quiz Multiplayer — Estudo & Diversão</div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="credits">Ítalo R., Jennifer F., Letícia M.</div>
+          <div class="version">v1.0</div>
+        </div>
+      </div>
     </header>
 
-    <!-- LOBBY -->
-    <section id="lobby" class="screen active">
-      <div class="card">
-        <h2>Crie ou entre em uma sala</h2>
-        <p class="muted">Junte seus colegas e competam — cada pergunta vale 10 pontos.</p>
-        <input id="nickname" placeholder="Seu nome" type="text" />
-        <input id="roomCode" placeholder="Código da sala (deixe vazio para criar)" type="text" />
-        <div class="row">
-          <button id="createRoomBtn" class="btn primary">Criar Sala</button>
-          <button id="joinRoomBtn" class="btn outline">Entrar</button>
-        </div>
-        <p class="hint">Ao criar, um código será gerado — compartilhe com os colegas.</p>
-      </div>
-    </section>
+    <!-- MAIN CONTENT -->
+    <main class="main">
 
-    <!-- ROOM -->
-    <section id="room" class="screen">
-      <div class="card">
-        <div class="top">
-          <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
-        </div>
-        <div class="players">
-          <h3>Jogadores</h3>
-          <ul id="playerList" class="player-list"></ul>
-        </div>
-        <button id="startGameBtn" class="btn primary">Iniciar jogo</button>
-      </div>
-    </section>
+      <!-- LOBBY -->
+      <section id="lobby" class="screen active screen--fade">
+        <div class="card card--lg">
+          <h2 class="card-title">Crie ou entre em uma sala</h2>
+          <p class="muted">Junte seus colegas e competam — cada pergunta vale <strong>10 pontos</strong>.</p>
 
-    <!-- GAME -->
-    <section id="game" class="screen">
-      <div class="card game-card">
-        <div class="game-header">
-          <div id="roundLabel" class="round-label">Rodada 1</div>
-          <div id="timer" class="timer">10s</div>
+          <label class="field">
+            <span class="label">Seu nome</span>
+            <input id="nickname" placeholder="Ex: Ítalo" type="text" autocomplete="name" />
+          </label>
+
+          <label class="field">
+            <span class="label">Código da sala (opcional)</span>
+            <input id="roomCode" placeholder="Deixe vazio para criar" type="text" inputmode="text" />
+          </label>
+
+          <div class="row row--gap-lg">
+            <button id="createRoomBtn" class="btn btn--primary btn--lg">Criar Sala</button>
+            <button id="joinRoomBtn" class="btn btn--ghost btn--lg">Entrar</button>
+          </div>
+
+          <div class="hint">Ao criar, um código será gerado — compartilhe com os colegas.</div>
+
+          <div class="card-footer">
+            <small class="muted">Dica: use nomes diferentes em abas para testar multiplayer local.</small>
+            <div class="progress-skeleton" aria-hidden="true">
+              <div class="progress-bar"></div>
+            </div>
+          </div>
         </div>
-        <div id="questionText" class="question">Carregando pergunta...</div>
-        <div id="options" class="options-grid"></div>
-        <div id="roundStatus" class="round-status"></div>
-      </div>
-    </section>
+      </section>
 
-    <!-- RESULTS -->
-    <section id="results" class="screen">
-      <div class="card">
-        <h2>🏆 Resultado Final</h2>
-        <div id="podium" class="podium"></div>
-        <div id="finalRanking" class="final-ranking"></div>
-        <button id="backToLobbyBtn" class="btn primary">Voltar ao Início</button>
-      </div>
-    </section>
+      <!-- ROOM -->
+      <section id="room" class="screen screen--fade">
+        <div class="card card--lg">
+          <div class="top">
+            <h2 class="card-title">Sala: <span id="roomCodeDisplay" class="room-code">—</span></h2>
+            <p class="muted">Compartilhe o código com quem for jogar.</p>
+          </div>
 
+          <div class="players card-sub">
+            <h3 class="small-title">Jogadores</h3>
+            <ul id="playerList" class="player-list" aria-live="polite"></ul>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <button id="startGameBtn" class="btn btn--primary btn--lg">Iniciar jogo</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- GAME -->
+      <section id="game" class="screen screen--fade">
+        <div class="card card--full">
+          <div class="game-top">
+            <div class="game-meta">
+              <div id="roundLabel" class="round-label">Rodada 1</div>
+              <div id="timer" class="timer" aria-live="polite">10s</div>
+            </div>
+            <div id="roundProgress" class="round-progress" aria-hidden="true">
+              <div class="round-progress-fill"></div>
+            </div>
+          </div>
+
+          <div class="question-card">
+            <div id="questionText" class="question heading-lg">Carregando pergunta...</div>
+
+            <!-- OPTIONS: empilhadas (uma abaixo da outra) -->
+            <div id="options" class="options-list" role="list"></div>
+
+            <div id="roundStatus" class="round-status" aria-live="polite"></div>
+          </div>
+
+          <div class="game-actions">
+            <button id="backToLobbyBtn" class="btn btn--ghost">Sair para o lobby</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULTS -->
+      <section id="results" class="screen screen--fade">
+        <div class="card card--lg">
+          <h2 class="card-title">🏆 Resultado Final</h2>
+
+          <div id="podium" class="podium" role="status" aria-live="polite"></div>
+
+          <div id="finalRanking" class="final-ranking"></div>
+
+          <div class="row" style="margin-top:14px;">
+            <button id="backToLobbyBtn" class="btn btn--primary btn--lg">Voltar ao Início</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="foot-inner">
+        <small class="muted">Feito com ❤️ para estudo — teste em dispositivos reais para a melhor experiência.</small>
+        <div class="social">
+          <span class="pill">Modo: multiplayer</span>
+        </div>
+      </div>
+    </footer>
   </div>
 
-  <!-- Socket.IO e script -->
+  <!-- Socket.IO e script (mantidos) -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
