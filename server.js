@@ -1,76 +1,147 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+// ===============================
+// 🎮 A NARRAÇÃO - Servidor Multiplayer Sincronizado
+// ===============================
+
+import express from "express";
+import http from "http";
+import { Server } from "socket.io";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+app.use(express.static(path.join(__dirname)));
+
 const PORT = process.env.PORT || 3000;
 
-app.use(express.static(__dirname + "/public"));
+// ===============================
+// 📦 Estrutura das salas
+// ===============================
+let rooms = {};
 
-const baseQuestions = [
-  { question: "O que é uma narração?", options: ["Um texto que conta uma história com personagens e tempo", "Um texto que descreve objetos ou lugares", "Um texto que defende uma opinião", "Um texto que explica um conceito"], answer: 0 },
-  { question: "Qual é o principal elemento da narração?", options: ["O narrador", "O autor", "O título", "O tema"], answer: 0 },
-  { question: "O que é o enredo?", options: ["A sequência de ações e acontecimentos da história", "O espaço onde ocorre a história", "O conflito dos personagens", "A fala dos personagens"], answer: 0 },
-  { question: "Quem conta a história em um texto narrativo?", options: ["O narrador", "O protagonista", "O autor", "O leitor"], answer: 0 },
-  { question: "Qual desses é um tipo de narrador?", options: ["Narrador-personagem", "Narrador-ilustrador", "Narrador-público", "Narrador-anônimo"], answer: 0 },
-  { question: "O que é o clímax na narrativa?", options: ["O momento de maior tensão da história", "O início da história", "A conclusão da história", "A descrição do espaço"], answer: 0 },
-  { question: "O que representa o desfecho?", options: ["A parte final onde o conflito é resolvido", "O começo da história", "O conflito central", "A fala dos personagens"], answer: 0 },
-  { question: "Qual é a função do tempo na narração?", options: ["Situar os acontecimentos", "Descrever personagens", "Defender uma tese", "Apresentar um argumento"], answer: 0 },
-  { question: "O espaço narrativo representa:", options: ["O lugar onde a história se passa", "O tempo dos acontecimentos", "O ponto de vista do narrador", "O tema principal"], answer: 0 },
-  { question: "Quem é o protagonista?", options: ["O personagem principal da história", "O narrador observador", "O antagonista", "O autor do texto"], answer: 0 }
+// ===============================
+// 🧠 Banco de perguntas
+// ===============================
+const questions = [
+  { q: "O que é uma narração?", a: ["Um texto que conta uma história com personagens e tempo", "Um texto que descreve objetos ou lugares", "Um texto que defende uma opinião", "Um texto que explica um conceito"], correct: 0 },
+  { q: "Quem é o narrador-personagem?", a: ["Quem participa da história e a conta", "Quem só observa de fora", "Quem escreve o livro", "Quem representa o leitor"], correct: 0 },
+  { q: "O que é o enredo?", a: ["A sequência de ações da história", "O local onde se passa a história", "A moral do texto", "A fala dos personagens"], correct: 0 },
+  { q: "Qual o momento de maior tensão da narrativa?", a: ["Clímax", "Introdução", "Desfecho", "Narrativa"], correct: 0 },
+  { q: "O desfecho representa:", a: ["A parte final da história", "O início da narrativa", "O conflito", "O espaço narrativo"], correct: 0 },
+  { q: "Quem é o protagonista?", a: ["O personagem principal", "O narrador observador", "O vilão", "O leitor"], correct: 0 },
+  { q: "O que o tempo faz na narrativa?", a: ["Situa os acontecimentos", "Apresenta personagens", "Explica ideias", "Expõe opiniões"], correct: 0 },
+  { q: "O espaço narrativo é:", a: ["O lugar onde ocorre a história", "O tema da história", "A fala dos personagens", "O conflito central"], correct: 0 },
+  { q: "Quem conta a história?", a: ["O narrador", "O autor", "O leitor", "O protagonista"], correct: 0 },
+  { q: "O que é o clímax?", a: ["O ponto de maior tensão", "O início do texto", "O final", "A descrição"], correct: 0 }
 ];
 
-function shuffle(array){ return array.sort(() => Math.random() - 0.5); }
+// ===============================
+// ⚙️ Conexões Socket.IO
+// ===============================
+io.on("connection", (socket) => {
+  console.log("🟢 Novo jogador conectado:", socket.id);
 
-const rooms = {}; // { roomCode: { players:{name:score}, questions:[], answersThisRound:{} } }
-
-io.on("connection", socket => {
-
-  socket.on("createRoom", ({ playerName }) => {
-    const roomCode = Math.random().toString(36).substring(2,7).toUpperCase();
-    rooms[roomCode] = { players: {}, questions: [], answersThisRound: {} };
-    rooms[roomCode].players[playerName] = 0;
-    socket.join(roomCode);
-    io.to(socket.id).emit("roomCreated", roomCode);
-    io.to(roomCode).emit("updatePlayers", rooms[roomCode].players);
+  socket.on("createRoom", (name) => {
+    const code = Math.random().toString(36).substring(2, 7).toUpperCase();
+    rooms[code] = {
+      host: socket.id,
+      players: { [socket.id]: { name, score: 0 } },
+      currentQuestion: 0,
+      timer: null,
+      answers: {},
+    };
+    socket.join(code);
+    socket.emit("roomCreated", code);
+    io.to(code).emit("updatePlayers", Object.values(rooms[code].players));
   });
 
-  socket.on("joinRoom", ({ playerName, roomCode }) => {
-    if(!rooms[roomCode]) return socket.emit("error", "Sala não existe!");
-    rooms[roomCode].players[playerName] = 0;
-    socket.join(roomCode);
-    io.to(roomCode).emit("updatePlayers", rooms[roomCode].players);
+  socket.on("joinRoom", ({ name, code }) => {
+    if (!rooms[code]) return socket.emit("errorMsg", "Sala não encontrada!");
+    rooms[code].players[socket.id] = { name, score: 0 };
+    socket.join(code);
+    io.to(code).emit("updatePlayers", Object.values(rooms[code].players));
   });
 
-  socket.on("startGame", (roomCode) => {
-    if(!rooms[roomCode]) return;
-    rooms[roomCode].questions = shuffle([...baseQuestions]);
-    rooms[roomCode].answersThisRound = {};
-    io.to(roomCode).emit("gameStarted", rooms[roomCode].questions);
+  socket.on("startGame", (code) => {
+    if (!rooms[code]) return;
+    rooms[code].currentQuestion = 0;
+    startRound(code);
   });
 
-  socket.on("answer", ({ roomCode, playerName, correct }) => {
-    if(!rooms[roomCode]) return;
-    if(correct) rooms[roomCode].players[playerName] += 1;
-    rooms[roomCode].answersThisRound[playerName] = true;
-
-    io.to(roomCode).emit("updatePlayers", rooms[roomCode].players);
-
-    const allAnswered = Object.keys(rooms[roomCode].players)
-      .every(p => rooms[roomCode].answersThisRound[p]);
-    if(allAnswered){
-      rooms[roomCode].answersThisRound = {};
-      io.to(roomCode).emit("nextQuestion");
+  socket.on("answer", ({ code, answer }) => {
+    const room = rooms[code];
+    if (!room) return;
+    room.answers[socket.id] = answer;
+    // Se respondeu certo, soma ponto
+    const q = questions[room.currentQuestion];
+    if (answer === q.a[q.correct]) {
+      room.players[socket.id].score += 1;
     }
   });
 
-  socket.on("endGame", ({ roomCode }) => {
-    if(!rooms[roomCode]) return;
-    io.to(roomCode).emit("gameEnded", rooms[roomCode].players);
+  socket.on("disconnect", () => {
+    for (const code in rooms) {
+      const room = rooms[code];
+      if (room.players[socket.id]) {
+        delete room.players[socket.id];
+        io.to(code).emit("updatePlayers", Object.values(room.players));
+        if (Object.keys(room.players).length === 0) delete rooms[code];
+      }
+    }
   });
 });
 
+// ===============================
+// ⏱️ Rodadas controladas pelo servidor
+// ===============================
+function startRound(code) {
+  const room = rooms[code];
+  if (!room) return;
+
+  const qIndex = room.currentQuestion;
+  if (qIndex >= questions.length) {
+    endGame(code);
+    return;
+  }
+
+  const q = questions[qIndex];
+  io.to(code).emit("startQuestion", { question: q.q, options: q.a, time: 10 });
+
+  // Zera respostas
+  room.answers = {};
+
+  // Inicia o timer da rodada
+  clearTimeout(room.timer);
+  room.timer = setTimeout(() => {
+    io.to(code).emit("timeUp", { correct: q.a[q.correct] });
+    setTimeout(() => {
+      room.currentQuestion++;
+      startRound(code);
+    }, 1500);
+  }, 10000);
+}
+
+// ===============================
+// 🏁 Final do jogo
+// ===============================
+function endGame(code) {
+  const room = rooms[code];
+  if (!room) return;
+
+  const ranking = Object.values(room.players)
+    .sort((a, b) => b.score - a.score)
+    .map((p, i) => ({ ...p, rank: i + 1 }));
+
+  io.to(code).emit("showResults", ranking);
+  delete rooms[code];
+}
+
+// ===============================
+// 🚀 Inicialização
+// ===============================
 server.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
