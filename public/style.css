@@ -1,54 +1,65 @@
 /* Reset e fontes */
 * { box-sizing: border-box; margin:0; padding:0; font-family: 'Inter', sans-serif; }
-body { background: #f0f4f8; color: #333; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+body { 
+  min-height: 100vh; 
+  display:flex; 
+  justify-content:center; 
+  align-items:flex-start; 
+  background: linear-gradient(180deg, #0a1f44, #00102e); 
+  color: #fff; 
+  padding:20px; 
+}
 
 /* Screens */
-.screen { display:none; width:100%; max-width:480px; padding:20px; }
+.screen { display:none; width:100%; max-width:480px; padding:10px; }
 .screen.active { display:block; }
 
 /* Card */
-.card { background:#fff; border-radius:12px; padding:20px; box-shadow:0 6px 20px rgba(0,0,0,0.08); margin-bottom:20px; text-align:center; }
+.card { background: rgba(255,255,255,0.05); border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,0.3); margin-bottom:20px; text-align:center; backdrop-filter: blur(6px); }
 
 /* Header */
 .main-header { text-align:center; margin-bottom:20px; }
-.game-title { font-size:2rem; margin-bottom:4px; }
-.credits { font-size:0.85rem; color:#666; }
+.game-title { font-size:2rem; margin-bottom:4px; color:#f3f4f6; }
+.credits { font-size:0.85rem; color:#cbd5e1; }
 
 /* Inputs */
-input { width:100%; padding:10px 12px; margin:8px 0; border-radius:8px; border:1px solid #ccc; font-size:1rem; }
+input { width:100%; padding:12px 14px; margin:8px 0; border-radius:10px; border:none; font-size:1rem; outline:none; background: rgba(255,255,255,0.1); color:#fff; }
+
+/* Placeholder */
+input::placeholder { color: rgba(255,255,255,0.6); }
 
 /* Buttons */
-.btn { padding:10px 18px; border:none; border-radius:8px; font-weight:600; cursor:pointer; margin:5px; transition:0.2s; }
+.btn { padding:12px 20px; border:none; border-radius:10px; font-weight:600; cursor:pointer; margin:5px; transition:0.3s; }
 .btn.primary { background:#4f46e5; color:#fff; }
-.btn.primary:hover { background:#4338ca; }
-.btn.outline { background:#fff; border:2px solid #4f46e5; color:#4f46e5; }
-.btn.outline:hover { background:#4338ca; color:#fff; }
+.btn.primary:hover { background:#4338ca; transform:translateY(-2px); box-shadow:0 6px 12px rgba(0,0,0,0.3);}
+.btn.outline { background:transparent; border:2px solid #4f46e5; color:#4f46e5; }
+.btn.outline:hover { background:#4f46e5; color:#fff; transform:translateY(-2px); box-shadow:0 6px 12px rgba(0,0,0,0.3); }
 
 /* Players list */
 .player-list { list-style:none; text-align:left; margin-top:10px; }
-.player-list li { padding:6px 10px; background:#eef2ff; border-radius:6px; margin:4px 0; }
+.player-list li { padding:8px 12px; background: rgba(255,255,255,0.1); border-radius:8px; margin:4px 0; }
 
 /* Game card */
 .game-card { display:flex; flex-direction:column; gap:12px; }
 .game-header { display:flex; justify-content:space-between; font-weight:600; }
-.round-label { font-size:1.1rem; color:#4f46e5; }
-.timer { font-size:1.2rem; color:#e11d48; font-weight:700; }
+.round-label { font-size:1.1rem; color:#60a5fa; }
+.timer { font-size:1.2rem; color:#f87171; font-weight:700; }
 
 /* Question & options */
-.question { font-size:1.1rem; margin:12px 0; }
+.question { font-size:1.15rem; margin:12px 0; }
 .options-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.option-btn { padding:10px; border-radius:8px; border:1px solid #ccc; cursor:pointer; transition:0.2s; background:#f9fafb; }
-.option-btn:hover { background:#e0e7ff; }
+.option-btn { padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.3); cursor:pointer; transition:0.3s; background: rgba(255,255,255,0.1); color:#fff; font-weight:500; }
+.option-btn:hover { background: rgba(96,165,250,0.2); transform:translateY(-2px); }
 .option-btn.correct { background:#22c55e; color:#fff; }
 .option-btn.wrong { background:#ef4444; color:#fff; }
 .option-btn.selected { font-weight:700; }
 
 /* Round status */
-.round-status { margin-top:10px; font-size:0.9rem; color:#555; }
+.round-status { margin-top:10px; font-size:0.9rem; color:#cbd5e1; }
 
 /* Podium */
 .podium { display:flex; justify-content:center; gap:12px; margin:10px 0; }
-.place { width:80px; padding:10px; border-radius:8px; color:#fff; font-weight:600; display:flex; flex-direction:column; justify-content:center; align-items:center; }
+.place { width:80px; padding:10px; border-radius:12px; color:#fff; font-weight:700; display:flex; flex-direction:column; justify-content:center; align-items:center; animation: bounceIn 0.6s ease both; }
 .first { font-size:1.1rem; }
 
 /* Animations */
