@@ -13,66 +13,46 @@
       <p class="credits">Estudantes: Ítalo Rhuan, Jennifer Fideles, Letícia Medeiros</p>
     </header>
 
-    <!-- LOBBY -->
     <section id="lobby" class="screen active">
       <div class="card">
         <h2>Crie ou entre em uma sala</h2>
-        <p class="muted">Junte seus colegas e competam — cada pergunta vale 10 pontos.</p>
         <input id="nickname" placeholder="Seu nome" type="text" />
-        <div style="height:10px"></div>
         <input id="roomCode" placeholder="Código da sala (deixe vazio para criar)" type="text" />
-        <div style="height:14px"></div>
         <div class="row">
-          <button id="createRoomBtn" class="btn primary">Criar Sala</button>
-          <button id="joinRoomBtn" class="btn outline">Entrar</button>
+          <button id="createRoomBtn">Criar Sala</button>
+          <button id="joinRoomBtn">Entrar</button>
         </div>
-        <p class="hint">Ao criar, um código será gerado — compartilhe com os colegas.</p>
       </div>
     </section>
 
-    <!-- ROOM -->
     <section id="room" class="screen">
       <div class="card">
-        <div class="top">
-          <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
-        </div>
-        <div class="players">
-          <h3>Jogadores</h3>
-          <ul id="playerList"></ul>
-        </div>
-        <div style="height:12px"></div>
-        <button id="startGameBtn" class="btn primary">Iniciar jogo (5s)</button>
+        <h2>Sala: <span id="roomCodeDisplay">—</span></h2>
+        <ul id="playerList"></ul>
+        <button id="startGameBtn">Iniciar jogo</button>
       </div>
     </section>
 
-    <!-- GAME -->
     <section id="game" class="screen">
       <div class="card">
-        <div class="game-header">
-          <div id="roundLabel">Rodada 1</div>
-          <div id="timer">8s</div>
-        </div>
-        <div class="question-card">
-          <div id="questionText" class="question">Carregando pergunta...</div>
-          <div id="options" class="options-grid"></div>
-          <div id="roundStatus" style="margin-top:12px"></div>
-        </div>
+        <div id="roundLabel">Rodada 1</div>
+        <div id="timer">10s</div>
+        <div id="questionText">Carregando pergunta...</div>
+        <div id="options"></div>
+        <div id="roundStatus"></div>
       </div>
     </section>
 
-    <!-- RESULTS -->
     <section id="results" class="screen">
       <div class="card">
         <h2>🏆 Resultado Final</h2>
-        <div id="podium" class="podium"></div>
+        <div id="podium"></div>
         <div id="finalRanking"></div>
-        <div style="height:12px"></div>
-        <button id="backToLobbyBtn" class="btn primary">Voltar ao Início</button>
+        <button id="backToLobbyBtn">Voltar ao Início</button>
       </div>
     </section>
   </div>
 
-  <!-- Socket.IO e script -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
