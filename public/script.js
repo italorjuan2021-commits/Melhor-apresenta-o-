@@ -48,9 +48,55 @@ document.getElementById("startGameBtn").onclick = () => {
   socket.emit("startGame", { roomCode: currentRoom });
 };
 
-socket.on("gameStarted", () => {
-  alert("Jogo iniciado!");
+socket.on("question", (data) => {
   showScreen("game");
+
+  document.getElementById("questionText").textContent = data.question;
+
+  const optionsDiv = document.getElementById("options");
+  optionsDiv.innerHTML = "";
+
+  const timerEl = document.getElementById("timer");
+  let timeLeft = data.time;
+  timerEl.textContent = timeLeft + "s";
+
+  const interval = setInterval(() => {
+    timeLeft--;
+    timerEl.textContent = timeLeft + "s";
+    if (timeLeft <= 0) clearInterval(interval);
+  }, 1000);
+
+  data.options.forEach((opt, index) => {
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.textContent = opt;
+
+    btn.onclick = () => {
+      socket.emit("answer", { roomCode: currentRoom, answerIndex: index });
+      document.querySelectorAll(".option-btn").forEach(b => b.disabled = true);
+    };
+
+    optionsDiv.appendChild(btn);
+  });
+});
+
+socket.on("reveal", ({ correctIndex }) => {
+  const buttons = document.querySelectorAll(".option-btn");
+  buttons.forEach((b, i) => {
+    if (i === correctIndex) b.style.background = "green";
+    else b.style.background = "red";
+  });
+});
+
+socket.on("showResults", (ranking) => {
+  showScreen("results");
+
+  const rankingDiv = document.getElementById("finalRanking");
+  rankingDiv.innerHTML = "";
+
+  ranking.forEach((p, i) => {
+    rankingDiv.innerHTML += `<p>${i + 1}º - ${p.nickname}: ${p.score} pts</p>`;
+  });
 });
 
 document.getElementById("backToLobbyBtn").onclick = () => {
