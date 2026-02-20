@@ -16,13 +16,103 @@ const rooms = {};
 const questions = [
   {
     question: "O que é narração?",
-    options: ["Relatar fatos", "Descrever objetos", "Dar opinião", "Fazer perguntas"],
+    options: [
+      "Relatar fatos reais ou imaginários",
+      "Descrever apenas lugares",
+      "Dar opinião pessoal",
+      "Fazer perguntas ao leitor"
+    ],
     correctIndex: 0
   },
   {
     question: "Quem conta a história é chamado de:",
-    options: ["Autor", "Narrador", "Leitor", "Personagem"],
+    options: [
+      "Autor",
+      "Narrador",
+      "Leitor",
+      "Personagem secundário"
+    ],
     correctIndex: 1
+  },
+  {
+    question: "Quando o narrador participa da história ele é:",
+    options: [
+      "Observador",
+      "Protagonista",
+      "Narrador-personagem",
+      "Leitor"
+    ],
+    correctIndex: 2
+  },
+  {
+    question: "Narrador que não participa da história é chamado de:",
+    options: [
+      "Personagem",
+      "Observador",
+      "Autor",
+      "Leitor"
+    ],
+    correctIndex: 1
+  },
+  {
+    question: "A narração normalmente apresenta:",
+    options: [
+      "Fatos organizados no tempo",
+      "Apenas descrição física",
+      "Somente diálogos",
+      "Regras gramaticais"
+    ],
+    correctIndex: 0
+  },
+  {
+    question: "Um texto narrativo precisa ter:",
+    options: [
+      "Enredo",
+      "Tabela",
+      "Gráfico",
+      "Equação"
+    ],
+    correctIndex: 0
+  },
+  {
+    question: "O momento mais tenso da história é chamado de:",
+    options: [
+      "Introdução",
+      "Clímax",
+      "Conclusão",
+      "Resumo"
+    ],
+    correctIndex: 1
+  },
+  {
+    question: "A parte final da história é:",
+    options: [
+      "Clímax",
+      "Desenvolvimento",
+      "Desfecho",
+      "Introdução"
+    ],
+    correctIndex: 2
+  },
+  {
+    question: "Narrativas podem ser:",
+    options: [
+      "Reais ou fictícias",
+      "Somente reais",
+      "Somente científicas",
+      "Apenas técnicas"
+    ],
+    correctIndex: 0
+  },
+  {
+    question: "O conjunto de acontecimentos da história é chamado de:",
+    options: [
+      "Personagem",
+      "Tempo",
+      "Enredo",
+      "Narrador"
+    ],
+    correctIndex: 2
   }
 ];
 
