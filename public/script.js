@@ -1,7 +1,10 @@
 const socket = io();
 
 let playerName = "";
-let roomCode = "";
+let currentRoom = "";
+
+const nicknameInput = document.getElementById("nickname");
+const roomInput = document.getElementById("roomCode");
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -9,87 +12,47 @@ function showScreen(id) {
 }
 
 document.getElementById("createRoomBtn").onclick = () => {
-  playerName = nickname.value.trim();
+  playerName = nicknameInput.value.trim();
   if (!playerName) return alert("Digite seu nome");
-  socket.emit("createRoom", playerName);
+
+  socket.emit("createRoom", { nickname: playerName });
 };
 
 document.getElementById("joinRoomBtn").onclick = () => {
-  playerName = nickname.value.trim();
-  roomCode = roomCode.value.trim().toUpperCase();
-  if (!playerName || !roomCode) return alert("Preencha tudo");
-  socket.emit("joinRoom", { roomCode, playerName });
+  playerName = nicknameInput.value.trim();
+  currentRoom = roomInput.value.trim().toUpperCase();
+
+  if (!playerName || !currentRoom) return alert("Preencha tudo");
+
+  socket.emit("joinRoom", { nickname: playerName, roomCode: currentRoom });
 };
 
-socket.on("roomCreated", code => {
-  roomCode = code;
-  roomCodeDisplay.textContent = code;
-  showScreen("room");
-});
-
-socket.on("roomJoined", ({ roomCode: code }) => {
-  roomCode = code;
-  roomCodeDisplay.textContent = code;
+socket.on("roomCreated", ({ roomCode }) => {
+  currentRoom = roomCode;
+  document.getElementById("roomCodeDisplay").textContent = roomCode;
   showScreen("room");
 });
 
 socket.on("updatePlayers", players => {
-  playerList.innerHTML = "";
+  const list = document.getElementById("playerList");
+  list.innerHTML = "";
+
   players.forEach(p => {
     const li = document.createElement("li");
-    li.textContent = `${p.name} — ${p.score} pts`;
-    playerList.appendChild(li);
+    li.textContent = `${p.nickname} — ${p.score} pts`;
+    list.appendChild(li);
   });
 });
 
-startGameBtn.onclick = () => {
-  socket.emit("startGame", roomCode);
+document.getElementById("startGameBtn").onclick = () => {
+  socket.emit("startGame", { roomCode: currentRoom });
 };
 
-socket.on("question", data => {
+socket.on("gameStarted", () => {
+  alert("Jogo iniciado!");
   showScreen("game");
-
-  questionText.textContent = data.question;
-  options.innerHTML = "";
-  timer.textContent = data.time + "s";
-
-  let t = data.time;
-  const interval = setInterval(() => {
-    t--;
-    timer.textContent = t + "s";
-    if (t <= 0) clearInterval(interval);
-  }, 1000);
-
-  data.options.forEach((opt, i) => {
-    const btn = document.createElement("button");
-    btn.className = "option-btn";
-    btn.textContent = opt;
-    btn.onclick = () => {
-      socket.emit("answer", { roomCode, answerIndex: i });
-      document.querySelectorAll(".option-btn").forEach(b=>b.disabled=true);
-    };
-    options.appendChild(btn);
-  });
 });
 
-socket.on("reveal", ({ correctIndex }) => {
-  const buttons = document.querySelectorAll(".option-btn");
-  buttons.forEach((b,i)=>{
-    if(i===correctIndex) b.classList.add("correct");
-    else b.classList.add("wrong");
-  });
-});
-
-socket.on("showResults", ranking => {
-  showScreen("results");
-  podium.innerHTML="";
-  finalRanking.innerHTML="";
-
-  ranking.forEach((p,i)=>{
-    finalRanking.innerHTML += `<p>${i+1}º - ${p.name}: ${p.score} pts</p>`;
-  });
-});
-
-backToLobbyBtn.onclick = () => {
+document.getElementById("backToLobbyBtn").onclick = () => {
   showScreen("lobby");
 };
